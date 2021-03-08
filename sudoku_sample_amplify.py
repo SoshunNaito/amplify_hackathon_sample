@@ -6,7 +6,7 @@ from amplify.client import FixstarsClient
 from amplify.constraint import equal_to, penalty
 
 client = FixstarsClient()
-#client.token = "DELETED TOKEN"
+client.token = "Xiccn8dKHhDoboWnaixrUEDRjvMl2vzo"
 client.parameters.timeout = 1000
 
 
