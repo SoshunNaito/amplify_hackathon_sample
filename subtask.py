@@ -5,6 +5,7 @@ import queue
 import math
 
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 
 from amplify import Solver, decode_solution, gen_symbols, BinaryPoly, sum_poly, BinaryQuadraticModel
@@ -16,8 +17,8 @@ client = FixstarsClient()
 client.token = "Xiccn8dKHhDoboWnaixrUEDRjvMl2vzo"
 client.parameters.timeout = 10 * 1000
 
-N = 6	# number of qubits
-SAMPLE_SIZE_MAX = 100000
+N = 14	# number of qubits
+SAMPLE_SIZE_MAX = 500000
 pairList = []
 pairList_inv = {}
 
@@ -51,8 +52,18 @@ B = np.array([5,3,2,4,0,1])
 print(calcCost(A,B))
 """
 
+def func(i,j):
+	return (i+j)/2 - i*j/(N-1)
+
+def approxTest(A):
+	ans = 0
+	for i in range(N):
+		ans += func(i, A[i])
+	return ans
+
+
 def getDataset(N):
-	X, Y = [], []
+	X, Y, W = [], [], []
 
 	if(N > 15 or math.factorial(N) > SAMPLE_SIZE_MAX):
 		for n in range(SAMPLE_SIZE_MAX):
@@ -63,6 +74,7 @@ def getDataset(N):
 				x[pairList_inv[p[i]*N + i]] += 1
 			X.append(x)
 			Y.append(calcCost(p))
+			W.append(approxTest(p))
 	else:
 		for p in itertools.permutations(range(N), N):
 			x = np.zeros(len(pairList))
@@ -70,36 +82,66 @@ def getDataset(N):
 				x[pairList_inv[p[i]*N + i]] += 1
 			X.append(x)
 			Y.append(calcCost(p))
+			W.append(approxTest(p))
 
 	# print(X)
 	# print(Y)
 
-	return X,Y
+	return X,Y,W
 
-RUN_CLASSIC_SOLVER = True
-RUN_QUANTUM_SOLVER = True
+PLOT_RAW_RESULTS = False
 PLOT_RESULTS = True
 
-X,Y = getDataset(N)
+X,Y,W = getDataset(N)
 
-if(RUN_CLASSIC_SOLVER):
-	model = LinearRegression()
-	model.fit(X,Y)
+model_XY = LinearRegression()
+model_XY.fit(X,Y)
 
-	if(PLOT_RESULTS):
-		Z = model.predict(X)
-		plt.scatter(Y,Z)
-		plt.xlim(-1, N*(N-1)//2+1)
-		plt.ylim(-1, N*(N-1)//2+1)
-		plt.show()
-	#print(pairList)
-	print("coefficient")
-	print(model.coef_)
-	print("intercept")
-	print(model.intercept_)
+# print(pairList)
+# print("coefficient")
+# print(model_XY.coef_)
+# print("intercept")
+# print(model_XY.intercept_)
 
-if(RUN_QUANTUM_SOLVER):
-	exit(0)
+x = np.arange(-1, N*(N-1)//2+1)
+
+W = np.array(W).reshape(-1, 1)
+Z = model_XY.predict(X)
+
+model_WZ = LinearRegression()
+model_WZ.fit(W,Z)
+
+if(PLOT_RAW_RESULTS):
+	plt.scatter(Y,Z)
+	plt.xlim(-1, N*(N-1)//2+1)
+	plt.ylim(-1, N*(N-1)//2+1)
+	plt.xlabel("ground truth")
+	plt.ylabel("sklearn results")
+	plt.plot(x, x, color = "red")
+	plt.show()
+
+	plt.scatter(Y,W)
+	plt.xlim(-1, N*(N-1)//2+1)
+	plt.ylim(-1, N*(N-1)//2+1)
+	plt.xlabel("ground truth")
+	plt.ylabel("theory results")
+	plt.plot(x, x, color = "red")
+	plt.show()
+
+if(PLOT_RESULTS):
+	y = x * model_WZ.coef_[0] + model_WZ.intercept_
+
+	plt.scatter(W,Z)
+	plt.xlim(-1, N*(N-1)//2+1)
+	plt.ylim(-1, N*(N-1)//2+1)
+	plt.xlabel("theory results")
+	plt.ylabel("sklearn results")
+	plt.title("N = "+str(N))
+	plt.plot(x,y,
+		label="y = "+str(model_WZ.coef_[0])+"x"+str(model_WZ.intercept_).replace("-"," - ")+"\n"+
+		"R^2 = "+str(r2_score(model_WZ.predict(W),Z)))
+	plt.legend()
+	plt.show()
 
 
 
