@@ -1,23 +1,13 @@
 import numpy as np
 import random
 import itertools
-import queue
 import math
 
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 
-from amplify import Solver, decode_solution, gen_symbols, BinaryPoly, sum_poly, BinaryQuadraticModel
-from amplify.client import FixstarsClient
-from amplify.constraint import equal_to, penalty
-
-client = FixstarsClient()
-# client.token = "DELETED TOKEN"
-client.token = "Xiccn8dKHhDoboWnaixrUEDRjvMl2vzo"
-client.parameters.timeout = 10 * 1000
-
-N = 14	# number of qubits
+N = 6	# number of qubits
 SAMPLE_SIZE_MAX = 500000
 pairList = []
 pairList_inv = {}
