@@ -1,0 +1,188 @@
+N = 3
+[['c', 'a'], ['c', 'a'], ['b', 'c'], ['b', 'c'], ['c', 'a']]
+
+['acb', 'acb', 'acb', 'acb', 'acb']
+cost(classic) = 0
+time(classic) = 0.0014226436614990234
+
+['acb', 'acb', 'acb', 'acb', 'acb']
+cost(quantum) = 0
+time(quantum) = 1.8336288928985596
+
+N = 4
+[['b', 'a', 'c', 'd'], ['c', 'd'], ['a', 'b', 'd', 'c'], ['c', 'a'], ['c', 'b', 'a', 'd']]
+
+['bacd', 'bacd', 'bacd', 'bcad', 'bcad']
+cost(classic) = 1
+time(classic) = 0.01898503303527832
+
+['bacd', 'bacd', 'bacd', 'bacd', 'bcad']
+cost(quantum) = 1
+time(quantum) = 1.8184070587158203
+
+N = 5
+[['d', 'a'], ['b', 'a', 'c', 'd'], ['a', 'c'], ['c', 'b', 'd', 'a'], ['e', 'd']]
+
+['bcade', 'bacde', 'bcade', 'bcade', 'bcade']
+cost(classic) = 2
+time(classic) = 0.25780606269836426
+
+['bcade', 'bacde', 'bcade', 'bcade', 'bcade']
+cost(quantum) = 2
+time(quantum) = 1.4684889316558838
+
+N = 6
+[['b', 'a', 'c', 'f'], ['b', 'e'], ['d', 'f', 'a', 'c'], ['f', 'd'], ['b', 'd']]
+
+['cfdabe', 'cafdbe', 'cafdbe', 'cafdbe', 'cafdbe']
+cost(classic) = 2
+time(classic) = 9.392707824707031
+
+['cfdabe', 'cfadbe', 'cafdbe', 'cafdbe', 'cafdbe']
+cost(quantum) = 2
+time(quantum) = 1.1751201152801514
+
+N = 7
+[['f', 'g', 'c', 'd'], ['d', 'e', 'g', 'c'], ['f', 'e'], ['a', 'e', 'c', 'd'], ['e', 'a', 'd', 'f']]
+
+['aedcfgb', 'aedfcgb', 'aefdcgb', 'aefdcgb', 'aefdcgb']
+cost(classic) = 2
+time(classic) = 318.937707901001
+
+['baedcfg', 'baedfcg', 'baefdcg', 'baefdcg', 'baefdcg']
+cost(quantum) = 2
+time(quantum) = 1.2766218185424805
+
+N = 8
+[['b', 'e', 'c', 'h', 'a', 'f', 'd', 'g'], ['h', 'e', 'a', 'b', 'd', 'c', 'f', 'g'], ['h', 'e', 'a', 'f', 'b', 'g', 'd', 'c'], ['b', 'g', 'a', 'h', 'f', 'c', 'e', 'd'], ['a', 'c', 'd', 'b', 'g', 'e', 'h', 'f']]
+
+['afbegdhc', 'abfgehdc', 'afbghecd', 'ahfcgbed', 'achfgebd']
+cost(quantum) = 16
+time(quantum) = 1.3620409965515137
+
+N = 9
+[['c', 'h', 'i', 'b'], ['d', 'f', 'c', 'a', 'b', 'h', 'i', 'g'], ['g', 'a'], ['b', 'f', 'h', 'g'], ['a', 'd', 'h', 'e']]
+
+['egaibchdf', 'egiachbdf', 'eigahcdbf', 'ieghacdbf', 'igehadcbf']
+cost(quantum) = 10
+time(quantum) = 1.3654272556304932
+
+N = 10
+[['g', 'j', 'i', 'c', 'a', 'b'], ['f', 'e', 'b', 'j', 'a', 'd', 'i', 'h'], ['a', 'e', 'g', 'f', 'h', 'c'], ['h', 'c', 'b', 'd', 'g', 'j'], ['g', 'j', 'e', 'f', 'c', 'a']]
+
+['ichdabjgef', 'ihcdabjgef', 'ihcdbaejgf', 'ihcdbaefgj', 'ihdcabefgj']
+cost(quantum) = 9
+time(quantum) = 1.6483159065246582
+
+N = 11
+[['i', 'g', 'b', 'e', 'c', 'h', 'd', 'f'], ['b', 'e', 'd', 'h', 'g', 'k'], ['b', 'h', 'k', 'a', 'e', 'f', 'd', 'i', 'c', 'j'], ['e', 'k', 'h', 'd', 'c', 'f'], ['a', 'j']]
+
+['hcbedfjigka', 'hdbecifjkga', 'bhdiefcjkag', 'bdhicfekjag', 'bdhicfekjag']
+cost(quantum) = 19
+time(quantum) = 1.8614740371704102
+
+N = 12
+[['k', 'i', 'b', 'd', 'h', 'f'], ['i', 'l', 'h', 'e', 'd', 'c', 'a', 'g'], ['k', 'c', 'i', 'g', 'b', 'j', 'd', 'f'], ['j', 'd', 'l', 'f', 'b', 'k', 'e', 'g'], ['l', 'k', 'g', 'd', 'f', 'c', 'a', 'h']]
+
+['bdkicjlfhgae', 'bkcdjilfgahe', 'kcbjlfdigeah', 'kbclfjdigeah', 'bklcfjdgieah']
+cost(quantum) = 21
+time(quantum) = 3.147268056869507
+
+N = 13
+[['d', 'e', 'h', 'k', 'f', 'a', 'i', 'g', 'm', 'b', 'j', 'c'], ['d', 'g', 'l', 'c', 'h', 'a', 'i', 'm', 'e', 'k', 'f', 'b'], ['c', 'g'], ['b', 'e', 'h', 'd'], ['g', 'f', 'i', 'c', 'j', 'd', 'l', 'b']]
+
+['ligcjbmdefahk', 'lcimgdjbfekah', 'cgmlifbjdehka', 'mcgfilbejdhka', 'mgfcilbedjhak']
+cost(quantum) = 35
+time(quantum) = 3.5741207599639893
+
+N = 14
+[['b', 'c'], ['c', 'i', 'm', 'a', 'n', 'g', 'l', 'b', 'k', 'd', 'e', 'f', 'j', 'h'], ['e', 'j', 'm', 'h', 'b', 'd'], ['f', 'k', 'e', 'b'], ['m', 'j', 'b', 'd', 'a', 'f', 'n', 'h', 'k', 'g', 'c', 'e']]
+
+['gnahmjefkdlibc', 'gnamhjefkdicbl', 'gnahmfkejibdcl', 'ngahmkfijebcdl', 'nhkgafmjiecbdl']
+cost(quantum) = 28
+time(quantum) = 4.819540977478027
+
+N = 15
+[['b', 'g', 'h', 'e', 'a', 'i'], ['o', 'h', 'k', 'i'], ['g', 'e', 'k', 'l', 'o', 'f'], ['k', 'm', 'e', 'i', 'n', 'o', 'b', 'a', 'c', 'h', 'd', 'j', 'l', 'g'], ['b', 'c', 'a', 'o', 'j', 'm', 'e', 'h', 'n', 'd', 'g', 'i']]
+
+['foaicbgkhelndjm', 'afcbhoikgneldjm', 'abfochinegkldjm', 'fbachoniegldjkm', 'fcbaohegilndkjm']
+cost(quantum) = 41
+time(quantum) = 6.101449966430664
+
+N = 16
+[['a', 'o', 'h', 'b', 'j', 'e', 'n', 'd', 'f', 'm'], ['h', 'l', 'o', 'i', 'j', 'a', 'c', 'f', 'n', 'g'], ['b', 'l', 'c', 'm', 'n', 'd'], ['g', 'a', 'd', 'k', 'o', 'n', 'c', 'e'], ['c', 'm', 'h', 'j', 'k', 'e', 'f', 'p', 'd', 'b', 'a', 'l']]
+
+['cmfejpbhlaondgki', 'cfmejaphlbdngkoi', 'fcmehjaplbgndoki', 'fcemhjplagnokdbi', 'cmfpjhekoalngbdi']
+cost(quantum) = 51
+time(quantum) = 8.465924978256226
+
+N = 17
+[['h', 'l', 'i', 'q', 'g', 'n'], ['e', 'o'], ['m', 'k', 'p', 'h', 'g', 'c', 'o', 'j', 'd', 'f'], ['b', 'p'], ['h', 'i', 'g', 'j', 'c', 'a', 'k', 'b', 'f', 'n', 'd', 'o', 'e', 'l']]
+
+['phlakmbfiqedgnocj', 'plhakfbmidnqeocgj', 'lphbakmifdenqcgjo', 'pbklheifamncgdjoq', 'pbkelhifnmcagjodq']
+cost(quantum) = 52
+time(quantum) = 6.492326259613037
+
+N = 18
+[['c', 'i', 'o', 'a', 'q', 'f', 'l', 'm', 'g', 'h', 'b', 'p', 'n', 'r', 'e', 'd', 'k', 'j'], ['a', 'e', 'f', 'o', 'b', 'n', 'l', 'c', 'm', 'q', 'd', 'g', 'j', 'i', 'h', 'k', 'r', 'p'], ['d', 'g'], ['j', 'f', 'm', 'l', 'n', 'p', 'g', 'c', 'o', 'e', 'q', 'i', 'r', 'k', 'd', 'b'], ['e', 'o', 'k', 'n', 'd', 'j', 'b', 'h', 'r', 'i', 'f', 'p', 'l', 'c', 'q', 'g', 'm', 'a']]
+
+['aodefqmlhgicjkrnpb', 'aefomqgdlchkijrpbn', 'oaemflqcgdjikrhbnp', 'oeamlgcqijfrkhdbnp', 'eoamlcqgrifpjdnkhb']
+cost(quantum) = 69
+time(quantum) = 34.80943202972412
+
+N = 19
+[['s', 'r', 'f', 'e'], ['q', 'c', 'n', 'b', 'a', 's', 'r', 'l', 'm', 'd'], ['p', 'e', 'q', 'i'], ['b', 'a', 'l', 'q', 'h', 'j', 'n', 'd', 'o', 'r', 'k', 's', 'c', 'g', 'f', 'm', 'p', 'i'], ['d', 'h', 'i', 'q', 'f', 'k', 'c', 'r', 'o', 'e', 'g', 'm', 's', 'p']]
+
+['bnjdkomghasrlfepciq', 'jnbhodmkgasfrlpcqie', 'jhndobamkrsgflqicpe', 'hjdnaborksmfecgpiql', 'jhdnbakfoegmrcspiql']
+cost(quantum) = 79
+time(quantum) = 20.652245044708252
+
+N = 20
+[['k', 'd', 'g', 'r', 'c', 'f'], ['b', 'r', 'j', 'a', 's', 'h'], ['o', 'r', 's', 'm', 't', 'i', 'n', 'e', 'f', 'j', 'a', 'q', 'd', 'p', 'l', 'g', 'k', 'c'], ['g', 'q', 'n', 'd', 'p', 's', 'j', 'i', 'o', 'r', 'f', 't'], ['r', 'f']]
+
+['itfckdmobjsarghplneq', 'ifktcdmjaobrpshgqlen', 'kcitfjdpbmsorhqalgen', 'kcjitfmspbordnheaqgl', 'kcijtbmorfpshndeqgal']
+cost(quantum) = 85
+time(quantum) = 20.046834230422974
+
+N = 21
+[['c', 'o', 'a', 'f', 'l', 'n', 'q', 'p', 't', 'r', 'b', 's', 'j', 'u', 'h', 'e', 'm', 'k'], ['q', 't', 'j', 'm', 'o', 'g', 'u', 'i', 'a', 'd', 'l', 'e', 'r', 'n'], ['c', 'r', 'i', 'b', 'g', 'a', 't', 'p'], ['e', 'a', 'c', 'j', 't', 'r', 'b', 'h', 'f', 'm', 'i', 'q', 'u', 'l', 'd', 'g', 'o', 'k', 'n', 's'], ['n', 'u', 'h', 'l', 'r', 'o', 'k', 'e', 's', 't', 'f', 'a', 'q', 'j']]
+
+['qprtijubsnlkmehcodgaf', 'ptquisbrnjmhlekcfogad', 'ptqubislhmnjrcoefkagd', 'qiplubhtrsnjcokeamfgd', 'ipqjstblhronumckedgfa']
+cost(quantum) = 114
+time(quantum) = 78.95604014396667
+
+N = 22
+[['s', 'r', 'f', 'h', 'p', 'g', 'c', 'j', 'k', 'v'], ['g', 't', 'h', 'e', 'i', 'b'], ['i', 'e', 'o', 'v', 'j', 'u'], ['g', 'e', 'r', 'p', 'n', 'k', 'i', 'u', 'b', 'a', 'd', 'h'], ['s', 'm', 't', 'n', 'c', 'i', 'q', 'u', 'k', 'f', 'r', 'h', 'v', 'd', 'o', 'e']]
+
+['vkfhnbiaoegputdrsjclmq', 'fknaovheibutgdpjsqmrcl', 'knavobftheidgqujsmpcrl', 'nkabfvtodhgeiuqlsjmrpc', 'tnkfadveoblgrhquicsmpj']
+cost(quantum) = 116
+time(quantum) = 42.6651668548584
+
+N = 23
+[['r', 'v', 'q', 'h', 'a', 'i', 'o', 'b', 'j', 'e', 'k', 'c', 's', 'm', 'w', 'p'], ['i', 'u', 'n', 'o', 'c', 'h'], ['f', 'o'], ['m', 'w', 'n', 'j'], ['j', 'v', 'm', 'u', 'l', 'w', 'b', 'c', 'e', 'k', 'q', 'h', 'g', 'o', 'd', 'f', 'r', 't', 's', 'p', 'i', 'a']]
+
+['aiuqhsmckljepwdgnbotfrv', 'qiuachksjlpmedwgnobvftr', 'quhispcleakdjmbnofgwtvr', 'qhpiuecsalkbdnjomwfgvrt', 'hqpskeiaumbclwdfgonvjrt']
+cost(quantum) = 113
+time(quantum) = 51.08373808860779
+
+N = 24
+[['d', 'x', 'b', 'w', 'v', 'h', 's', 'f', 'e', 'c', 'r', 'o', 't', 'm'], ['a', 'd', 'o', 'm', 'j', 'x', 'i', 'c'], ['g', 'e', 'a', 't', 'f', 'c', 'l', 'x'], ['a', 'b', 'c', 'q', 's', 'l', 'x', 'd', 'w', 't', 'o', 'n', 'u', 'k', 'f', 'p', 'v', 'g', 'm', 'e', 'j', 'i', 'h', 'r'], ['s', 'i', 'r', 'v', 'l', 'h', 'a', 'g', 'b', 'j', 'k', 'p', 'q', 'w']]
+
+['uvhkfspqbwagtmjdxeciorln', 'uhkbfpvqwsdatxjgecirmoln', 'ukhbpwtarsfcvqgexljdmino', 'ukrhtwabpfvgslqcijdxnoem', 'tukpfrvqwgahlbjsicdxnmeo']
+cost(quantum) = 157
+time(quantum) = 121.05122709274292
+
+N = 25
+[['q', 'o', 'x', 'i', 'l', 'b', 'w', 'h', 'v', 'f', 'm', 'e', 'c', 'p', 'd', 'a', 'k', 'y'], ['i', 'n', 'a', 'b'], ['u', 'g', 't', 'j', 'r', 'b', 'f', 'h', 'm', 'a', 'c', 'w', 'k', 'q', 'x', 'o', 'n', 'y', 's', 'e'], ['k', 'j', 'f', 'v', 'q', 'b', 'y', 'a', 'r', 's', 'd', 'n', 't', 'c', 'o', 'h', 'w', 'u', 'e', 'g', 'i', 'p'], ['s', 'u', 'h', 'm', 'r', 't']]
+
+['tpcjuadngrsxiemblwhoqfvyk', 'cpdgwutjelsrxinabokymqvfh', 'cwgutjpdieslrbxokqynmavhf', 'ctwuipgersjkdnxlbqohyamfv', 'wcipegjtrksubodlxnhmayfqv']
+cost(quantum) = 178
+time(quantum) = 125.89372301101685
+
+N = 26
+[['s', 'i', 'z', 'h', 'n', 't', 'd', 'w', 'e', 'l', 'p', 'o', 'u', 'm', 'q', 'g'], ['a', 'v', 'y', 'f', 'n', 'c', 't', 'w', 'g', 'r', 'm', 'e', 'd', 'l', 'b', 'h', 'j', 'k', 'i', 's', 'u', 'p', 'o', 'q', 'z', 'x'], ['v', 'q', 'u', 'r', 'k', 'w', 'f', 'h'], ['r', 'p', 'v', 'j'], ['v', 'l', 'g', 'w', 'p', 't', 'f', 'q', 'u', 'k', 'r', 'a', 'j', 'c', 'm', 'h', 'b', 'z', 'e', 'n']]
+
+['zhbycxtnrwdfqgelmuaopisvjk', 'bhzxnctwmefyrgldupvaqokjis', 'bcxemznhftdpruyvqajwklgiso', 'cmxzebtrpfnhdujvqglykiaows', 'tpmhzbxnejcfqvlrakudgwsioy']
+cost(quantum) = 220
+time(quantum) = 188.49646830558777
+

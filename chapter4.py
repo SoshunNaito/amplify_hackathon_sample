@@ -86,63 +86,70 @@ def classic_solver(N,M,query): # solve with a classic computer
 	##########   DP solution in O((N!)^2 * M)   ##########
 	F = len(x)
 	INF = 10000000
+	valid = [[] for m in range(M)]
 	dp = [[INF for f in range(F)] for m in range(M)]
 	back = [[-1 for f in range(F)] for m in range(M)]
+
+	dist = [[-1 for f1 in range(F)] for f2 in range(F)]
+
+	for f1 in range(F):
+		dist[f1][f1] = 0
+		que = queue.Queue()
+		que.put(f1)
+
+		while not que.empty():
+			f2 = que.get()
+			s = x[f2]
+			for i in range(N-1):
+				v0, v1 = s[i], s[i+1]
+				s = s.translate(str.maketrans({v0:v1, v1:v0}))
+
+				f = x_inv[s]
+				if(dist[f1][f] == -1):
+					dist[f1][f] = dist[f1][f2] + 1
+					que.put(f)
+
+				s = s.translate(str.maketrans({v0:v1, v1:v0}))
 
 	for m in range(M):
 		if(m == 0):
 			for f in range(F):
 				dp[m][f] = 0
 
-				valid = True
+				flag = True
 				for g0 in range(0,len(query[m]),2):
 					v0, v1 = query[m][g0], query[m][g0 + 1]
 					if(abs(x[f].find(v0)-x[f].find(v1)) != 1):
-						valid = False
+						flag = False
 						break
 
-				if(valid == False):
+				if(flag == False):
 					dp[m][f] = INF
 					continue
+				else:
+					valid[m].append(f)
 		else:
-			for f2 in range(F):
-				dp[m][f2] = dp[m-1][f2]
-				back[m][f2] = f2
+			for f in range(F):
+				dp[m][f] = dp[m-1][f]
+				back[m][f] = f
 
-				valid = True
+				flag = True
 				for g0 in range(0,len(query[m]),2):
 					v0, v1 = query[m][g0], query[m][g0 + 1]
-					if(abs(x[f2].find(v0)-x[f2].find(v1)) != 1):
-						valid = False
+					if(abs(x[f].find(v0)-x[f].find(v1)) != 1):
+						flag = False
 						break
 
-				if(valid == False):
-					dp[m][f2] = INF
+				if(flag == False):
+					dp[m][f] = INF
 					continue
+				else:
+					valid[m].append(f)
 
-				##########   01-BFS   ##########
-				dist = [-1 for f in range(F)]
-				dist[f2] = 0
-
-				que = queue.Queue()
-				que.put(f2)
-
-				while not que.empty():
-					f1 = que.get()
-					s = x[f1]
-					for i in range(N-1):
-						v0, v1 = s[i], s[i+1]
-						s = s.translate(str.maketrans({v0:v1, v1:v0}))
-
-						f = x_inv[s]
-						if(dist[f] == -1):
-							dist[f] = dist[f1] + 1
-							que.put(f)
-							if(dp[m-1][f] + dist[f] < dp[m][f2]):
-								back[m][f2] = f
-								dp[m][f2] = dp[m-1][f] + dist[f]
-
-						s = s.translate(str.maketrans({v0:v1, v1:v0}))
+				for f0 in valid[m-1]:
+					if(dp[m-1][f0] + dist[f0][f] < dp[m][f]):
+						dp[m][f] = dp[m-1][f0] + dist[f0][f]
+						back[m][f] = f0
 
 	cost, last = INF, -1
 	for f in range(F):
@@ -275,11 +282,11 @@ def quantum_solver(N,M,query): # solve with Amplify
 
 
 # N = 3	# number of qubits
-M = 5	# number of CX-gate layers
+M = 20	# number of CX-gate layers
 
-mode = "STANDARD"
+# mode = "STANDARD"
 # mode = "Q_TIME"
-# mode = "COST"
+mode = "COST"
 
 filename = {
 	"STANDARD" : "result_standard.txt",
@@ -288,7 +295,7 @@ filename = {
 }
 N_range = {
 	"STANDARD" : range(3,27),
-	"Q_TIME" : range(5,27,5),
+	"Q_TIME" : range(5,21,5),
 	"COST" : range(3,7),
 }
 
@@ -314,6 +321,10 @@ with open(filename[mode], mode = "w") as f:
 
 				print("")
 				f.write("\n")
+			
+			else:
+				print("k = " + str(k))
+
 
 			if(N <= 7 and mode in ["STANDARD", "COST"]):
 				dt, cost, ans = classic_solver(N,M,query)
