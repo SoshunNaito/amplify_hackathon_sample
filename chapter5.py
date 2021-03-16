@@ -78,7 +78,7 @@ def quantum_solver(N,M,query): # solve with Amplify
 	CXgate_constraints = []
 	for m in range(M):
 		for g0 in range(0,len(query[m]),2):
-			v0, v1 = ord(query[m][g0])-ord("a"), ord(query[m][g0 + 1])-ord("a")
+			v0, v1 = query[m][g0], query[m][g0 + 1]
 
 			# v0 and v1 must be adjacent each other
 			for i in range(N):
@@ -130,24 +130,16 @@ def quantum_solver(N,M,query): # solve with Amplify
 
 	##########   decode the result into string   ##########
 
-	ans = []
-	temp = []
+	ans = [[-1 for n in range(N)] for m in range(M)]
 	for m in range(M):
-		s = ""
-		t = [-1] * N
 		for n in range(N):
-			c = "."
 			for v in range(N):
 				if(q_values[m][n][v] > 0.5):
-					c = chr(ord("a") + v)
-					t[n] = v
-			s += c
-		ans.append(s)
-		temp.append(t)
+					ans[m][n] = v
 
 	cost = 0
 	for m in range(M-1):
-		cost += calcCost(temp[m], temp[m+1])
+		cost += calcCost(ans[m], ans[m+1])
 
 	t3 = time.time()
 
@@ -157,7 +149,7 @@ def quantum_solver(N,M,query): # solve with Amplify
 
 	dt0, dt1, dt2 = t1-t0, t2-t1, t3-t2
 
-	return dt0, dt1, dt2,cost, ans
+	return dt0, dt1, dt2, cost, ans
 
 
 
@@ -172,7 +164,7 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
 CANVAS_WIDTH = WINDOW_WIDTH * 2
-CANVAS_HEIGHT = WINDOW_HEIGHT * 0.5
+CANVAS_HEIGHT = WINDOW_HEIGHT * 0.6
 CANVAS_Y = WINDOW_HEIGHT * 0.25
 
 label_head = WINDOW_WIDTH * 0.15
@@ -247,6 +239,8 @@ def getColor(theta_deg):
 CANVAS_X_START = 50
 CANVAS_X_OFFSET = 50
 
+DRAW_LAYER_PARTITION = False
+
 def Draw(_gates):
 	symbols = _gates[0]
 	_gates = _gates[1:]
@@ -310,9 +304,11 @@ def Draw(_gates):
 
 			draw_layers.append(layer)
 
-		draw_layers.append([["partition"]])
+		if(DRAW_LAYER_PARTITION == True):
+			draw_layers.append([["partition"]])
 
-	draw_layers = draw_layers[:-1]
+	if(DRAW_LAYER_PARTITION == True):
+		draw_layers = draw_layers[:-1]
 	
 	# print(draw_layers)
 
@@ -323,6 +319,8 @@ def Draw(_gates):
 
 	Y = [(CANVAS_HEIGHT-20) * (n+0.5) / N for n in range(N)]
 	colors = [getColor(360 * n/N) for n in range(N)]
+
+	canvas.delete("all")
 
 	for n in range(N):
 		canvas.create_text(
@@ -375,7 +373,7 @@ def Draw(_gates):
 
 
 def Load():
-	qasmFileName = qasmFileName_input.get() + ".txt"
+	qasmFileName = qasmFileName_input.get()
 
 	S = []
 	with open(qasmFileName, mode = "r") as f:
@@ -474,7 +472,14 @@ def Load():
 	Draw(gates_layer)
 
 def Execute():
-	print(gates_input)
+	if(gates_layer == []):
+		return
+
+	global client, constraintWeight
+	client.parameters.timeout = int(timeout_input.get().replace("ms",""))
+	constraintWeight = int(constraintWeight_input.get())
+
+
 
 
 
@@ -499,8 +504,8 @@ qasmFileName_label = tk.Label(text = 'サンプル名')
 qasmFileName_label.place(x = label_head, y = qasmFileName_height)
 
 qasmFileName_comboBox = ttk.Combobox(root, textvariable = qasmFileName_input)
-qasmFileName_comboBox['values'] = ('qasm/ex1','qasm/ex2','qasm/ex3')
-qasmFileName_comboBox.set("qasm/ex1")
+qasmFileName_comboBox['values'] = ('qasm/ex1.txt','qasm/ex2.txt','qasm/ex3.txt')
+qasmFileName_comboBox.set("qasm/ex1.txt")
 qasmFileName_comboBox.place(x = comboBox_head, y = qasmFileName_height)
 
 # Timeout Input
@@ -521,8 +526,8 @@ constraintWeight_label = tk.Label(text = '制約の重みパラメータ')
 constraintWeight_label.place(x = label_head, y = constraintWeight_height)
 
 constraintWeight_comboBox = ttk.Combobox(root, textvariable = constraintWeight_input)
-constraintWeight_comboBox['values'] = ('x1','x10','x100','x1000','x10000')
-constraintWeight_comboBox.set("x100")
+constraintWeight_comboBox['values'] = ('1','10','100','1000','10000')
+constraintWeight_comboBox.set("100")
 constraintWeight_comboBox.place(x = comboBox_head, y = constraintWeight_height)
 
 # Load Button
