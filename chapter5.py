@@ -247,63 +247,77 @@ def getColor(theta_deg):
 CANVAS_X_START = 50
 CANVAS_X_OFFSET = 50
 
-def Draw(gates):
-	symbols = gates[0]
-	gates = gates[1:]
+def Draw(_gates):
+	symbols = _gates[0]
+	_gates = _gates[1:]
 
 
-	##########   gates -> layers   ##########
+	##########   gates -> draw_layers   ##########
 
-	Ng = len(gates)
-	layers = []
-	used = [False] * Ng
-	for _i in range(Ng):
-		# 0 -> empty
-		# 1 -> reserved
-		# 2 -> used
-		stat = [0] * N
+	gate_block = [[]]
+	for gate in _gates:
+		if(gate[0] == "partition"):
+			gate_block.append([])
+		else:
+			gate_block[-1].append(gate)
 
-		layer = []
+	draw_layers = []
 
-		for i in range(Ng):
-			if(used[i] == True): continue
-			g = gates[i]
+	for gates in gate_block:
+		Ng = len(gates)
+		used = [False] * Ng
+		for _i in range(Ng):
+			# 0 -> empty
+			# 1 -> reserved
+			# 2 -> used
+			stat = [0] * N
 
-			if(g[0] == "cx" or g[0] == "swap"):
-				flag = True
-				j0, j1 = g[1], g[2]
-				
-				if(stat[j0] == 1 or stat[j1] == 1):
-					flag = False
-				for j in range(min(j0,j1), max(j0,j1)+1):
-					if(stat[j] == 2):
+			layer = []
+
+			for i in range(Ng):
+				if(used[i] == True): continue
+				g = gates[i]
+
+				if(g[0] == "cx" or g[0] == "swap"):
+					flag = True
+					j0, j1 = g[1], g[2]
+					
+					if(stat[j0] == 1 or stat[j1] == 1):
 						flag = False
-						break
-
-				if(flag):
-					used[i] = True
-					layer.append(g)
 					for j in range(min(j0,j1), max(j0,j1)+1):
+						if(stat[j] == 2):
+							flag = False
+							break
+
+					if(flag):
+						used[i] = True
+						layer.append(g)
+						for j in range(min(j0,j1), max(j0,j1)+1):
+							stat[j] = 2
+					else:
+						stat[j0] = max(stat[j0], 1)
+						stat[j1] = max(stat[j1], 1)
+
+				elif(g[0] == "u3"):
+					j = g[1]
+					
+					if(stat[j] == 0):
+						used[i] = True
+						layer.append(g)
 						stat[j] = 2
-				else:
-					stat[j0] = max(stat[j0], 1)
-					stat[j1] = max(stat[j1], 1)
 
-			else:
-				j = g[1]
-				
-				if(stat[j] == 0):
-					used[i] = True
-					layer.append(g)
-					stat[j] = 2
+			if(layer == []): break
 
-		if(layer == []): break
-		layers.append(layer)
+			draw_layers.append(layer)
+
+		draw_layers.append([["partition"]])
+
+	draw_layers = draw_layers[:-1]
 	
-	# print(layers)
+	# print(draw_layers)
 
 
-	##########   draw layers   ##########
+	##########   draw   ##########
 
 	GATE_SIZE = 10
 
@@ -320,10 +334,10 @@ def Draw(gates):
 			fill = colors[n], width = 3
 		)
 
-	Nl = len(layers)
+	Nl = len(draw_layers)
 	for n in range(Nl):
 		x = CANVAS_X_START + CANVAS_X_OFFSET + n * (CANVAS_WIDTH - CANVAS_X_START - CANVAS_X_OFFSET * 2) / (Nl-1)
-		for g in layers[n]:
+		for g in draw_layers[n]:
 			if(g[0] == "u3"):
 				y = Y[g[1]]
 				canvas.create_rectangle(
@@ -351,6 +365,12 @@ def Draw(gates):
 				canvas.create_line(
 					x,y2-GATE_SIZE*0.7,x,y2+GATE_SIZE*0.7,
 					fill = "white", width = 3
+				)
+			elif(g[0] == "swap"):
+				exit(0)
+			elif(g[0] == "partition"):
+				canvas.create_line(
+					x, 0, x, CANVAS_HEIGHT, dash = (10, 5)
 				)
 
 
@@ -388,7 +408,7 @@ def Load():
 	# print(Q_dict)
 	# print(Q_dict_inv)
 
-	##########   detect CX-gates   ##########
+	##########   detect gates   ##########
 	global gates_input
 	gates_input = []
 
@@ -407,7 +427,51 @@ def Load():
 		elif(A[0][:2] == "u3"): gates_input.append(["u3", int(A[-1])])
 
 	#print(gates_input)
-	Draw(gates_input)
+	#Draw(gates_input)
+
+
+	##########   detect layers   ##########
+
+	global gates_layer
+	gates_layer = [gates_input[0]]
+
+	Ng = len(gates_input) - 1
+	used = [False] * Ng
+
+	for _i in range(Ng):
+		flag = False
+		stat = [False] * N
+
+		for i in range(Ng):
+			if(used[i] == True): continue
+			g = gates_input[i+1]
+
+			if(g[0] == "cx" or g[0] == "swap"):
+				j0, j1 = g[1], g[2]
+				
+				if(stat[j0] == False and stat[j1] == False):
+					used[i] = True
+					flag = True
+					gates_layer.append(g)
+
+				stat[j0] = True
+				stat[j1] = True
+
+			else:
+				j = g[1]
+				if(stat[j] == False):
+					used[i] = True
+					flag = True
+					gates_layer.append(g)
+
+		if(flag == False): break
+
+		gates_layer.append(["partition"])
+
+	gates_layer = gates_layer[:-1]
+
+	# print(gates_layer)
+	Draw(gates_layer)
 
 def Execute():
 	print(gates_input)
