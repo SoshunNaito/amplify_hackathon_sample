@@ -167,16 +167,27 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 
+# Window Layout
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
-root = tk.Tk()
+CANVAS_WIDTH = WINDOW_WIDTH * 2
+CANVAS_HEIGHT = WINDOW_HEIGHT * 0.5
+CANVAS_Y = WINDOW_HEIGHT * 0.25
+
+label_head = WINDOW_WIDTH * 0.15
+comboBox_head = WINDOW_WIDTH * 0.35
+button_head = WINDOW_WIDTH * 0.7
+
+row_head_1 = WINDOW_HEIGHT * 0.05
+row_head_2 = WINDOW_HEIGHT * 0.10
+row_head_3 = WINDOW_HEIGHT * 0.15
 
 # Variables
 canvas = None
-qasmFileName_input = StringVar()
-timeout_input = StringVar()
-constraintWeight_input = StringVar()
+qasmFileName_input = None
+timeout_input = None
+constraintWeight_input = None
 
 N = 10
 M = 10
@@ -190,53 +201,158 @@ gates_input = []
 gates_layer = []
 gates_swap = []
 
+
 # Functions
+def convertToColorCode(r, g, b):
+	r = max(min(r, 255), 0)
+	g = max(min(g, 255), 0)
+	b = max(min(b, 255), 0)
+
+	return "#" + format(int(r), '02x') +  format(int(g), '02x') + format(int(b), '02x')
+
 def getColor(theta_deg):
 	while(theta_deg < 0): theta_deg += 360
 	while(theta_deg > 360): theta_deg -= 360
 
-	ans = "#"
-	if(theta_deg < 60):
-		ans += "ff"
-		ans += format((int)(255 * theta_deg / 60), '02x')
-		ans += "00"
-	elif(theta_deg < 120):
-		ans += format((int)(255 * (120 - theta_deg) / 60), '02x')
-		ans += "ff"
-		ans += "00"
-	elif(theta_deg < 180):
-		ans += "00"
-		ans += "ff"
-		ans += format((int)(255 * (theta_deg - 120) / 60), '02x')
-	elif(theta_deg < 240):
-		ans += "00"
-		ans += format((int)(255 * (240 - theta_deg) / 60), '02x')
-		ans += "ff"
-	elif(theta_deg < 300):
-		ans += format((int)(255 * (theta_deg - 240) / 60), '02x')
-		ans += "00"
-		ans += "ff"
-	else:
-		ans += "ff"
-		ans += "00"
-		ans += format((int)(255 * (360 - theta_deg) / 60), '02x')
+	r,g,b = 0,0,0
 
-	return ans
+	if(theta_deg < 60):
+		r = 255
+		g = 255 * theta_deg / 60
+		b = 0
+	elif(theta_deg < 120):
+		r = 255 * (120 - theta_deg) / 60
+		g = 255
+		b = 0
+	elif(theta_deg < 180):
+		r = 0
+		g = 255
+		b = 255 * (theta_deg - 120) / 60
+	elif(theta_deg < 240):
+		r = 0
+		g = 255 * (240 - theta_deg) / 60
+		b = 255
+	elif(theta_deg < 300):
+		r = 255 * (theta_deg - 240) / 60
+		g = 0
+		b = 255
+	else:
+		r = 255
+		g = 0
+		b = 255 * (360 - theta_deg) / 60
+
+	return convertToColorCode(r,g,b)
+
+# Canvas Layout
+CANVAS_X_START = 50
+CANVAS_X_OFFSET = 50
 
 def Draw(gates):
-	CANVAS_WIDTH = canvas.winfo_width()
-	CANVAS_HEIGHT = canvas.winfo_height() - 20
-
 	symbols = gates[0]
 	gates = gates[1:]
 
-	X = 30
-	Y = [CANVAS_HEIGHT * (n+0.5) / N for n in range(N)]
+
+	##########   gates -> layers   ##########
+
+	Ng = len(gates)
+	layers = []
+	used = [False] * Ng
+	for _i in range(Ng):
+		# 0 -> empty
+		# 1 -> reserved
+		# 2 -> used
+		stat = [0] * N
+
+		layer = []
+
+		for i in range(Ng):
+			if(used[i] == True): continue
+			g = gates[i]
+
+			if(g[0] == "cx" or g[0] == "swap"):
+				flag = True
+				j0, j1 = g[1], g[2]
+				
+				if(stat[j0] == 1 or stat[j1] == 1):
+					flag = False
+				for j in range(min(j0,j1), max(j0,j1)+1):
+					if(stat[j] == 2):
+						flag = False
+						break
+
+				if(flag):
+					used[i] = True
+					layer.append(g)
+					for j in range(min(j0,j1), max(j0,j1)+1):
+						stat[j] = 2
+				else:
+					stat[j0] = max(stat[j0], 1)
+					stat[j1] = max(stat[j1], 1)
+
+			else:
+				j = g[1]
+				
+				if(stat[j] == 0):
+					used[i] = True
+					layer.append(g)
+					stat[j] = 2
+
+		if(layer == []): break
+		layers.append(layer)
+	
+	# print(layers)
+
+
+	##########   draw layers   ##########
+
+	GATE_SIZE = 10
+
+	Y = [(CANVAS_HEIGHT-20) * (n+0.5) / N for n in range(N)]
 	colors = [getColor(360 * n/N) for n in range(N)]
 
 	for n in range(N):
-		canvas.create_text(X - 10, Y[n], text = symbols[n], font = ("", 20), anchor = "e", fill = colors[n])
-		canvas.create_line(X, Y[n], X + 100, Y[n], fill = colors[n], width = 3)
+		canvas.create_text(
+			CANVAS_X_START - 10, Y[n], text = "q"+str(symbols[n]),
+			font = ("", 20), anchor = "e", fill = colors[n]
+		)
+		canvas.create_line(
+			CANVAS_X_START, Y[n], CANVAS_WIDTH, Y[n],
+			fill = colors[n], width = 3
+		)
+
+	Nl = len(layers)
+	for n in range(Nl):
+		x = CANVAS_X_START + CANVAS_X_OFFSET + n * (CANVAS_WIDTH - CANVAS_X_START - CANVAS_X_OFFSET * 2) / (Nl-1)
+		for g in layers[n]:
+			if(g[0] == "u3"):
+				y = Y[g[1]]
+				canvas.create_rectangle(
+					x-GATE_SIZE, y-GATE_SIZE, x+GATE_SIZE, y+GATE_SIZE,
+					fill = "magenta"
+				)
+			elif(g[0] == "cx"):
+				y1,y2 = Y[g[1]],Y[g[2]]
+				canvas.create_line(
+					x,y1,x,y2,
+					fill = "cyan", width = 2
+				)
+				canvas.create_oval(
+					x-GATE_SIZE/2, y1-GATE_SIZE/2, x+GATE_SIZE/2, y1+GATE_SIZE/2,
+					fill = "cyan"
+				)
+				canvas.create_oval(
+					x-GATE_SIZE, y2-GATE_SIZE, x+GATE_SIZE, y2+GATE_SIZE,
+					fill = "cyan"
+				)
+				canvas.create_line(
+					x-GATE_SIZE*0.7,y2,x+GATE_SIZE*0.7,y2,
+					fill = "white", width = 3
+				)
+				canvas.create_line(
+					x,y2-GATE_SIZE*0.7,x,y2+GATE_SIZE*0.7,
+					fill = "white", width = 3
+				)
+
 
 def Load():
 	qasmFileName = qasmFileName_input.get() + ".txt"
@@ -262,7 +378,7 @@ def Load():
 	for qv in Q_variables:
 		n = len(Q_dict)
 		for i in range(qv[1]):
-			Q_name, Q_symbol = qv[0]+"["+str(i)+"]", chr(ord("a")+n+i)
+			Q_name, Q_symbol = qv[0]+"["+str(i)+"]", n+i
 			Q_dict[Q_name] = Q_symbol
 			Q_dict_inv[Q_symbol] = Q_name
 
@@ -278,17 +394,17 @@ def Load():
 
 	gates_input.append([])
 	for n in range(N):
-		gates_input[0].append(chr(ord("a")+n))
+		gates_input[0].append(n)
 
 	for s in S:
 		s = s.replace(","," ")
 		s = s.replace(";"," ")
 		for Q_name, Q_symbol in Q_dict.items():
-			s = s.replace(Q_name,Q_symbol)
+			s = s.replace(Q_name,str(Q_symbol))
 
 		A = s.split()
-		if(A[0] == "cx"): gates_input.append(["cx", A[1], A[2]])
-		elif(A[0][:2] == "u3"): gates_input.append(["u3", A[-1]])
+		if(A[0] == "cx"): gates_input.append(["cx", int(A[1]), int(A[2])])
+		elif(A[0][:2] == "u3"): gates_input.append(["u3", int(A[-1])])
 
 	#print(gates_input)
 	Draw(gates_input)
@@ -296,29 +412,24 @@ def Load():
 def Execute():
 	print(gates_input)
 
-# Window Layout
+
+
+# Viewer
+root = tk.Tk()
 root.title("QC Viewer for LNNA")
 root.geometry(str(WINDOW_WIDTH) + "x" + str(WINDOW_HEIGHT))
 root.resizable(False, False)
 
-label_head = WINDOW_WIDTH * 0.15
-comboBox_head = WINDOW_WIDTH * 0.35
-button_head = WINDOW_WIDTH * 0.7
-
-row_head_1 = WINDOW_HEIGHT * 0.05
-row_head_2 = WINDOW_HEIGHT * 0.10
-row_head_3 = WINDOW_HEIGHT * 0.15
-
-# Viewer
-canvas = tk.Canvas(root, bg = "#bbb")
-canvas.place(x = 0, y = WINDOW_HEIGHT * 0.25, width = WINDOW_WIDTH, height = WINDOW_HEIGHT * 0.5)
+canvas = tk.Canvas(root, bg = "white")
+canvas.place(x = 0, y = CANVAS_Y, width = WINDOW_WIDTH, height = CANVAS_HEIGHT)
 bar_x = tk.Scrollbar(canvas, orient = tk.HORIZONTAL)
 bar_x.pack(side = tk.BOTTOM, fill = tk.X)
 bar_x.config(command = canvas.xview)
 canvas.config(xscrollcommand = bar_x.set)
-canvas.config(scrollregion = (0, 0, WINDOW_WIDTH * 2, WINDOW_HEIGHT))
+canvas.config(scrollregion = (0, 0, CANVAS_WIDTH, WINDOW_HEIGHT))
 
 # QASM File Input
+qasmFileName_input = StringVar()
 qasmFileName_height = row_head_1
 qasmFileName_label = tk.Label(text = 'サンプル名')
 qasmFileName_label.place(x = label_head, y = qasmFileName_height)
@@ -329,6 +440,7 @@ qasmFileName_comboBox.set("qasm/ex1")
 qasmFileName_comboBox.place(x = comboBox_head, y = qasmFileName_height)
 
 # Timeout Input
+timeout_input = StringVar()
 timeout_height = row_head_2
 timeout_label = tk.Label(text = 'タイムアウト')
 timeout_label.place(x = label_head, y = timeout_height)
@@ -339,6 +451,7 @@ timeout_comboBox.set("1000ms")
 timeout_comboBox.place(x = comboBox_head, y = timeout_height)
 
 # Constraint Weight Input
+constraintWeight_input = StringVar()
 constraintWeight_height = row_head_3
 constraintWeight_label = tk.Label(text = '制約の重みパラメータ')
 constraintWeight_label.place(x = label_head, y = constraintWeight_height)
