@@ -153,8 +153,9 @@ WINDOW_HEIGHT = 600
 
 CANVAS_WIDTH = WINDOW_WIDTH * 3
 CANVAS_HEIGHT = WINDOW_HEIGHT * 0.6
-CANVAS_Y = WINDOW_HEIGHT * 0.25
+CANVAS_Y = WINDOW_HEIGHT * 0.3
 
+cost_head = WINDOW_WIDTH * 0.05
 label_head = WINDOW_WIDTH * 0.15
 comboBox_head = WINDOW_WIDTH * 0.35
 button_head = WINDOW_WIDTH * 0.7
@@ -168,6 +169,7 @@ canvas = None
 qasmFileName_input = None
 timeout_input = None
 constraintWeight_input = None
+circuit_cost_text = None
 
 N = 10
 M = 10
@@ -177,10 +179,15 @@ Q_variables = []
 Q_dict = {}
 Q_dict_inv = {}
 
+C_variables = []
+C_dict = {}
+C_dict_inv = {}
+
 gates_input = []
 gates_layer = []
 gates_swap = []
 
+drawn_gates = []
 
 # Functions
 def convertToColorCode(r, g, b):
@@ -227,7 +234,7 @@ def getColor(theta_deg):
 CANVAS_X_START = 50
 CANVAS_X_OFFSET = 50
 
-DRAW_LAYER_PARTITION = True
+DRAW_LAYER_PARTITION = False
 
 def Draw(_gates):
 	initial_symbols = _gates[0]
@@ -292,6 +299,14 @@ def Draw(_gates):
 						layer.append(g)
 						stat[j] = 2
 
+				elif(g[0] == "measure"):
+					j = symbols.index(g[1])
+					
+					if(stat[j] == 0):
+						used[i] = True
+						layer.append(g)
+						stat[j] = 2
+
 			if(layer == []): break
 
 			for g in layer:
@@ -318,6 +333,7 @@ def Draw(_gates):
 	colors = [getColor(360 * n/N) for n in range(N)]
 	CX_COLOR = getColor(190)
 	U3_COLOR = getColor(310)
+	MEASURE_COLOR = "gray"
 
 	canvas.delete("all")
 
@@ -333,6 +349,9 @@ def Draw(_gates):
 
 	Nl = len(draw_layers)
 	prev_symbols = initial_symbols
+
+	global drawn_gates
+	drawn_gates = []
 
 	for n in range(Nl):
 		xd = (CANVAS_WIDTH - CANVAS_X_START - CANVAS_X_OFFSET * 2) / (Nl-1)
@@ -359,14 +378,29 @@ def Draw(_gates):
 		
 		for g in draw_layers[n]:
 			if(g[0] == "u3"):
-				y = Y[prev_symbols.index(g[1])]
+				i = prev_symbols.index(g[1])
+				y = Y[i]
+
 				canvas.create_rectangle(
 					x-GATE_SIZE, y-GATE_SIZE, x+GATE_SIZE, y+GATE_SIZE,
 					fill = U3_COLOR
 				)
+				drawn_gates.append(["u3", i, g[2]])
+
+			elif(g[0] == "measure"):
+				i = prev_symbols.index(g[1])
+				y = Y[i]
+
+				canvas.create_rectangle(
+					x-GATE_SIZE, y-GATE_SIZE, x+GATE_SIZE, y+GATE_SIZE,
+					fill = MEASURE_COLOR
+				)
+				drawn_gates.append(["measure", i, g[2]])
 
 			elif(g[0] == "cx"):
-				y1,y2 = Y[prev_symbols.index(g[1])],Y[prev_symbols.index(g[2])]
+				i,j = prev_symbols.index(g[1]),prev_symbols.index(g[2])
+				y1,y2 = Y[i],Y[j]
+
 				canvas.create_line(
 					x,y1,x,y2,
 					fill = CX_COLOR, width = 2
@@ -388,8 +422,12 @@ def Draw(_gates):
 					fill = "white", width = 3
 				)
 
+				drawn_gates.append(["cx", i, j])
+
 			elif(g[0] == "swap"):
-				y1,y2 = Y[prev_symbols.index(g[1])],Y[prev_symbols.index(g[2])]
+				i,j = prev_symbols.index(g[1]),prev_symbols.index(g[2])
+				y1,y2 = Y[i],Y[j]
+
 				canvas.create_line(
 					x,y1,x,y2,
 					fill = CX_COLOR, width = 2
@@ -411,6 +449,8 @@ def Draw(_gates):
 					fill = CX_COLOR, width = 2
 				)
 
+				drawn_gates.append(["swap", i, j])
+
 			elif(g[0] == "partition"):
 				canvas.create_line(
 					x, 0, x, CANVAS_HEIGHT, dash = (10, 5)
@@ -418,25 +458,33 @@ def Draw(_gates):
 
 		prev_symbols = current_symbols
 
+	print(drawn_gates)
 
 def Load():
-	qasmFileName = qasmFileName_input.get()
+	circuit_cost_text.set("Cost : -")
 
+	qasmFileName = qasmFileName_input.get()
 	S = []
 	with open(qasmFileName, mode = "r") as f:
 		S = f.readlines()
 
 	##########   detect variables   ##########
-	global Q_variables, Q_dict, Q_dict_inv
+	global Q_variables, Q_dict, Q_dict_inv, C_variables, C_dict, C_dict_inv
 	Q_variables = []
 	Q_dict = {}
 	Q_dict_inv = {}
+	C_variables = []
+	C_dict = {}
+	C_dict_inv = {}
 
 	for s in S:
 		A = s.split()
 		if(A[0]=="qreg"):
 			i,j = A[1].find("["), A[1].find("]")
 			Q_variables.append([A[1][:i], int(A[1][i+1:j])])
+		if(A[0]=="creg"):
+			i,j = A[1].find("["), A[1].find("]")
+			C_variables.append([A[1][:i], int(A[1][i+1:j])])
 
 	# print(Q_variables)
 	
@@ -446,6 +494,13 @@ def Load():
 			Q_name, Q_symbol = qv[0]+"["+str(i)+"]", n+i
 			Q_dict[Q_name] = Q_symbol
 			Q_dict_inv[Q_symbol] = Q_name
+
+	for cv in C_variables:
+		n = len(C_dict)
+		for i in range(cv[1]):
+			C_name, C_symbol = cv[0]+"["+str(i)+"]", n+i
+			C_dict[C_name] = C_symbol
+			C_dict_inv[C_symbol] = C_name
 
 	global N
 	N = len(Q_dict)
@@ -462,14 +517,22 @@ def Load():
 		gates_input[0].append(n)
 
 	for s in S:
-		s = s.replace(","," ")
-		s = s.replace(";"," ")
+		s = s.replace(";","")
+
+		if(s[:2] == "cx"):
+			s = s.replace(","," ")
+		elif(s[:2] == "u3"):
+			s = s.replace("(", " (")
+
 		for Q_name, Q_symbol in Q_dict.items():
 			s = s.replace(Q_name,str(Q_symbol))
+		for C_name, C_symbol in C_dict.items():
+			s = s.replace(C_name,str(C_symbol))
 
 		A = s.split()
 		if(A[0] == "cx"): gates_input.append(["cx", int(A[1]), int(A[2])])
-		elif(A[0][:2] == "u3"): gates_input.append(["u3", int(A[-1])])
+		elif(A[0][:2] == "u3"): gates_input.append(["u3", int(A[-1]), A[1]])
+		elif(A[0] == "measure"): gates_input.append(["measure", int(A[1]), int(A[-1])])
 
 	#print(gates_input)
 	#Draw(gates_input)
@@ -567,8 +630,10 @@ def Execute():
 
 	cost, ans = quantum_solver(N,M,query)
 
-	print("cost = " + str(cost))
+	# print("cost = " + str(cost))
 	# print(ans)
+
+	circuit_cost_text.set("Cost : " + str(cost))
 
 	global gates_swap
 	gates_swap = []
@@ -576,18 +641,23 @@ def Execute():
 	gates_swap.append(ans[0])
 	m = 0
 	for layer in gates_layer[1:]:
-		gates_swap.append(layer)
-
-		if(layer[0] == "partition"):
+		if(layer[0] != "partition"):
+			gates_swap.append(layer)
+		else:
 			m += 1
 			temp = bubble_sort(ans[m-1], ans[m])
 			for t in temp:
 				gates_swap.append(t)
 
-			gates_swap.append(["partition"])
+			# gates_swap.append(["partition"])
 
 	# print(gates_swap)
 	Draw(gates_swap)
+
+def Save():
+	if(drawn_gates == []): return
+
+
 
 # Viewer
 root = tk.Tk()
@@ -635,6 +705,12 @@ constraintWeight_comboBox = ttk.Combobox(root, textvariable = constraintWeight_i
 constraintWeight_comboBox['values'] = ('1','10','100','1000','10000')
 constraintWeight_comboBox.set(str(constraintWeight))
 constraintWeight_comboBox.place(x = comboBox_head, y = constraintWeight_height)
+
+# Circuit Cost Text
+circuit_cost_text = StringVar()
+circuit_cost_text.set("Cost : -")
+circuit_cost_label = tk.Label(root, textvariable = circuit_cost_text)
+circuit_cost_label.place(x = cost_head, y = CANVAS_Y - 20)
 
 # Load Button
 loadButton = tk.Button(root, text = '読み込む', command = Load)
