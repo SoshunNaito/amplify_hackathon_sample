@@ -14,7 +14,7 @@ import time
 client = FixstarsClient()
 # client.token = "DELETED TOKEN"
 client.token = "Xiccn8dKHhDoboWnaixrUEDRjvMl2vzo"
-client.parameters.timeout = 1 * 1000
+client.parameters.timeout = 1000
 
 constraintWeight = 100
 
@@ -115,13 +115,9 @@ def quantum_solver(N,M,query): # solve with Amplify
 	solver = Solver(client)
 	model = BinaryQuadraticModel(constraints * constraintWeight + cost)
 
-	t1 = time.time()
-
 	result = solver.solve(model)
 	if len(result) == 0:
-	    raise RuntimeError("Any one of constraints is not satisfied.")
-
-	t2 = time.time()
+		raise RuntimeError("Any one of constraints is not satisfied.")
 
 	values = result[0].values
 	q_values = decode_solution(q, values, 1)
@@ -141,15 +137,7 @@ def quantum_solver(N,M,query): # solve with Amplify
 	for m in range(M-1):
 		cost += calcCost(ans[m], ans[m+1])
 
-	t3 = time.time()
-
-	# print("preparation time : " + str(t1-t0))
-	# print("solving time : " + str(t2-t1))
-	# print("decoding time : " + str(t3-t2))
-
-	dt0, dt1, dt2 = t1-t0, t2-t1, t3-t2
-
-	return dt0, dt1, dt2, cost, ans
+	return cost, ans
 
 
 
@@ -163,7 +151,7 @@ from tkinter import ttk
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
-CANVAS_WIDTH = WINDOW_WIDTH * 2
+CANVAS_WIDTH = WINDOW_WIDTH * 3
 CANVAS_HEIGHT = WINDOW_HEIGHT * 0.6
 CANVAS_Y = WINDOW_HEIGHT * 0.25
 
@@ -239,10 +227,10 @@ def getColor(theta_deg):
 CANVAS_X_START = 50
 CANVAS_X_OFFSET = 50
 
-DRAW_LAYER_PARTITION = False
+DRAW_LAYER_PARTITION = True
 
 def Draw(_gates):
-	symbols = _gates[0]
+	initial_symbols = _gates[0]
 	_gates = _gates[1:]
 
 
@@ -255,17 +243,21 @@ def Draw(_gates):
 		else:
 			gate_block[-1].append(gate)
 
-	draw_layers = []
+	# print(gate_block)
 
-	for gates in gate_block:
+	draw_layers = []
+	symbols = [s for s in initial_symbols]
+
+	for m in range(len(gate_block)):
+		gates = gate_block[m]
 		Ng = len(gates)
 		used = [False] * Ng
+
 		for _i in range(Ng):
 			# 0 -> empty
 			# 1 -> reserved
 			# 2 -> used
 			stat = [0] * N
-
 			layer = []
 
 			for i in range(Ng):
@@ -274,7 +266,7 @@ def Draw(_gates):
 
 				if(g[0] == "cx" or g[0] == "swap"):
 					flag = True
-					j0, j1 = g[1], g[2]
+					j0, j1 = symbols.index(g[1]), symbols.index(g[2])
 					
 					if(stat[j0] == 1 or stat[j1] == 1):
 						flag = False
@@ -293,7 +285,7 @@ def Draw(_gates):
 						stat[j1] = max(stat[j1], 1)
 
 				elif(g[0] == "u3"):
-					j = g[1]
+					j = symbols.index(g[1])
 					
 					if(stat[j] == 0):
 						used[i] = True
@@ -301,6 +293,11 @@ def Draw(_gates):
 						stat[j] = 2
 
 			if(layer == []): break
+
+			for g in layer:
+				if(g[0] == "swap"):
+					i, j = symbols.index(g[1]), symbols.index(g[2])
+					symbols[i],symbols[j] = symbols[j],symbols[i]
 
 			draw_layers.append(layer)
 
@@ -319,42 +316,68 @@ def Draw(_gates):
 
 	Y = [(CANVAS_HEIGHT-20) * (n+0.5) / N for n in range(N)]
 	colors = [getColor(360 * n/N) for n in range(N)]
+	CX_COLOR = getColor(190)
+	U3_COLOR = getColor(310)
 
 	canvas.delete("all")
 
 	for n in range(N):
 		canvas.create_text(
-			CANVAS_X_START - 10, Y[n], text = "q"+str(symbols[n]),
-			font = ("", 20), anchor = "e", fill = colors[n]
+			CANVAS_X_START - 10, Y[n], text = "q"+str(initial_symbols[n]),
+			font = ("", 20), anchor = "e", fill = colors[initial_symbols[n]]
 		)
 		canvas.create_line(
-			CANVAS_X_START, Y[n], CANVAS_WIDTH, Y[n],
-			fill = colors[n], width = 3
+			CANVAS_X_START, Y[n], CANVAS_X_START + CANVAS_X_OFFSET, Y[n],
+			fill = colors[initial_symbols[n]], width = 3
 		)
 
 	Nl = len(draw_layers)
+	prev_symbols = initial_symbols
+
 	for n in range(Nl):
-		x = CANVAS_X_START + CANVAS_X_OFFSET + n * (CANVAS_WIDTH - CANVAS_X_START - CANVAS_X_OFFSET * 2) / (Nl-1)
+		xd = (CANVAS_WIDTH - CANVAS_X_START - CANVAS_X_OFFSET * 2) / (Nl-1)
+		x = CANVAS_X_START + CANVAS_X_OFFSET + n * xd
+		xl, xr = x - xd/2, x + xd/2
+
+		current_symbols = [s for s in prev_symbols]
+		for g in draw_layers[n]:
+			if(g[0] == "swap"):
+				i,j = current_symbols.index(g[1]),current_symbols.index(g[2])
+				current_symbols[i],current_symbols[j] = current_symbols[j],current_symbols[i]
+
+		for i in range(N):
+			canvas.create_line(
+				xl,Y[i],x,Y[i],
+				fill = colors[prev_symbols[i]], width = 3
+			)
+
+		for i in range(N):
+			canvas.create_line(
+				x,Y[i],xr,Y[i],
+				fill = colors[current_symbols[i]], width = 3
+			)
+		
 		for g in draw_layers[n]:
 			if(g[0] == "u3"):
-				y = Y[g[1]]
+				y = Y[prev_symbols.index(g[1])]
 				canvas.create_rectangle(
 					x-GATE_SIZE, y-GATE_SIZE, x+GATE_SIZE, y+GATE_SIZE,
-					fill = "magenta"
+					fill = U3_COLOR
 				)
+
 			elif(g[0] == "cx"):
-				y1,y2 = Y[g[1]],Y[g[2]]
+				y1,y2 = Y[prev_symbols.index(g[1])],Y[prev_symbols.index(g[2])]
 				canvas.create_line(
 					x,y1,x,y2,
-					fill = "cyan", width = 2
+					fill = CX_COLOR, width = 2
 				)
 				canvas.create_oval(
 					x-GATE_SIZE/2, y1-GATE_SIZE/2, x+GATE_SIZE/2, y1+GATE_SIZE/2,
-					fill = "cyan"
+					fill = CX_COLOR
 				)
 				canvas.create_oval(
 					x-GATE_SIZE, y2-GATE_SIZE, x+GATE_SIZE, y2+GATE_SIZE,
-					fill = "cyan"
+					fill = CX_COLOR
 				)
 				canvas.create_line(
 					x-GATE_SIZE*0.7,y2,x+GATE_SIZE*0.7,y2,
@@ -364,12 +387,36 @@ def Draw(_gates):
 					x,y2-GATE_SIZE*0.7,x,y2+GATE_SIZE*0.7,
 					fill = "white", width = 3
 				)
+
 			elif(g[0] == "swap"):
-				exit(0)
+				y1,y2 = Y[prev_symbols.index(g[1])],Y[prev_symbols.index(g[2])]
+				canvas.create_line(
+					x,y1,x,y2,
+					fill = CX_COLOR, width = 2
+				)
+				canvas.create_line(
+					x-GATE_SIZE*0.7, y2-GATE_SIZE*0.7, x+GATE_SIZE*0.7, y2+GATE_SIZE*0.7,
+					fill = CX_COLOR, width = 2
+				)
+				canvas.create_line(
+					x+GATE_SIZE*0.7, y2-GATE_SIZE*0.7, x-GATE_SIZE*0.7, y2+GATE_SIZE*0.7,
+					fill = CX_COLOR, width = 2
+				)
+				canvas.create_line(
+					x-GATE_SIZE*0.7, y1-GATE_SIZE*0.7, x+GATE_SIZE*0.7, y1+GATE_SIZE*0.7,
+					fill = CX_COLOR, width = 2
+				)
+				canvas.create_line(
+					x+GATE_SIZE*0.7, y1-GATE_SIZE*0.7, x-GATE_SIZE*0.7, y1+GATE_SIZE*0.7,
+					fill = CX_COLOR, width = 2
+				)
+
 			elif(g[0] == "partition"):
 				canvas.create_line(
 					x, 0, x, CANVAS_HEIGHT, dash = (10, 5)
 				)
+
+		prev_symbols = current_symbols
 
 
 def Load():
@@ -468,8 +515,31 @@ def Load():
 
 	gates_layer = gates_layer[:-1]
 
+	for i in range(len(gates_layer))[::-1]:
+		layer = gates_layer[i]
+		if(layer[0] == "cx"):
+			break
+		elif(layer[0] == "partition"):
+			gates_layer.pop(i)
+			break
+
 	# print(gates_layer)
 	Draw(gates_layer)
+
+def bubble_sort(symbols_0, symbols_1):
+	s0 = [s for s in symbols_0]
+	s1 = [s for s in symbols_1]
+	ans = []
+	n = len(s0)
+
+	for j in range(n)[::-1]:
+		j0 = s0.index(s1[j])
+
+		for i in range(j0, j):
+			ans.append(["swap", s0[i], s0[i+1]])
+			s0[i],s0[i+1] = s0[i+1],s0[i]
+
+	return ans
 
 def Execute():
 	if(gates_layer == []):
@@ -479,9 +549,45 @@ def Execute():
 	client.parameters.timeout = int(timeout_input.get().replace("ms",""))
 	constraintWeight = int(constraintWeight_input.get())
 
+	global M,query
+	query = [[]]
 
+	for layer in gates_layer[1:]:
+		if(layer[0] == "partition"):
+			query.append([])
+		elif(layer[0] == "cx"):
+			query[-1].append(layer[1])
+			query[-1].append(layer[2])
 
+	M = len(query)
 
+	# print(N)
+	# print(M)
+	# print(query)
+
+	cost, ans = quantum_solver(N,M,query)
+
+	print("cost = " + str(cost))
+	# print(ans)
+
+	global gates_swap
+	gates_swap = []
+
+	gates_swap.append(ans[0])
+	m = 0
+	for layer in gates_layer[1:]:
+		gates_swap.append(layer)
+
+		if(layer[0] == "partition"):
+			m += 1
+			temp = bubble_sort(ans[m-1], ans[m])
+			for t in temp:
+				gates_swap.append(t)
+
+			gates_swap.append(["partition"])
+
+	# print(gates_swap)
+	Draw(gates_swap)
 
 # Viewer
 root = tk.Tk()
@@ -516,7 +622,7 @@ timeout_label.place(x = label_head, y = timeout_height)
 
 timeout_comboBox = ttk.Combobox(root, textvariable = timeout_input)
 timeout_comboBox['values'] = ('1000ms','2000ms','3000ms','5000ms','10000ms','20000ms','30000ms')
-timeout_comboBox.set("1000ms")
+timeout_comboBox.set(str(client.parameters.timeout) + "ms")
 timeout_comboBox.place(x = comboBox_head, y = timeout_height)
 
 # Constraint Weight Input
@@ -527,7 +633,7 @@ constraintWeight_label.place(x = label_head, y = constraintWeight_height)
 
 constraintWeight_comboBox = ttk.Combobox(root, textvariable = constraintWeight_input)
 constraintWeight_comboBox['values'] = ('1','10','100','1000','10000')
-constraintWeight_comboBox.set("100")
+constraintWeight_comboBox.set(str(constraintWeight))
 constraintWeight_comboBox.place(x = comboBox_head, y = constraintWeight_height)
 
 # Load Button
