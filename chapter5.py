@@ -155,6 +155,8 @@ CANVAS_WIDTH = WINDOW_WIDTH * 3
 CANVAS_HEIGHT = WINDOW_HEIGHT * 0.6
 CANVAS_Y = WINDOW_HEIGHT * 0.3
 
+SAVE_BUTTON_Y = CANVAS_Y + CANVAS_HEIGHT + 5
+
 cost_head = WINDOW_WIDTH * 0.05
 label_head = WINDOW_WIDTH * 0.15
 comboBox_head = WINDOW_WIDTH * 0.35
@@ -328,6 +330,7 @@ def Draw(_gates):
 	##########   draw   ##########
 
 	GATE_SIZE = 10
+	GATE_WIDTH = 50
 
 	Y = [(CANVAS_HEIGHT-20) * (n+0.5) / N for n in range(N)]
 	colors = [getColor(360 * n/N) for n in range(N)]
@@ -335,7 +338,11 @@ def Draw(_gates):
 	U3_COLOR = getColor(310)
 	MEASURE_COLOR = "gray"
 
+	Nl = len(draw_layers)
+	prev_symbols = initial_symbols
+
 	canvas.delete("all")
+	canvas.config(scrollregion = (0, 0, CANVAS_X_START + CANVAS_X_OFFSET * 2 + GATE_WIDTH * (Nl-1), WINDOW_HEIGHT))
 
 	for n in range(N):
 		canvas.create_text(
@@ -347,16 +354,15 @@ def Draw(_gates):
 			fill = colors[initial_symbols[n]], width = 3
 		)
 
-	Nl = len(draw_layers)
-	prev_symbols = initial_symbols
-
 	global drawn_gates
-	drawn_gates = []
+	drawn_gates = [initial_symbols]
 
 	for n in range(Nl):
-		xd = (CANVAS_WIDTH - CANVAS_X_START - CANVAS_X_OFFSET * 2) / (Nl-1)
+		xd = GATE_WIDTH
 		x = CANVAS_X_START + CANVAS_X_OFFSET + n * xd
 		xl, xr = x - xd/2, x + xd/2
+
+		if(n == Nl-1): xr = x + CANVAS_X_OFFSET
 
 		current_symbols = [s for s in prev_symbols]
 		for g in draw_layers[n]:
@@ -458,7 +464,7 @@ def Draw(_gates):
 
 		prev_symbols = current_symbols
 
-	print(drawn_gates)
+	# print(drawn_gates)
 
 def Load():
 	circuit_cost_text.set("Cost : -")
@@ -654,9 +660,116 @@ def Execute():
 	# print(gates_swap)
 	Draw(gates_swap)
 
+def OptimizeSwapGates(gates):
+	if(len(gates) == 0):
+		return []
+
+	a,b = gates[0][1], gates[0][2]
+	s_gates = []
+	for i in range(len(gates)):
+		g = gates[i]
+		if(g[0] == "swap"):
+			s_gates.append(i)
+
+	cost = len(gates) * 10
+	ans = []
+	for _n in range(2**len(s_gates)):
+		temp = []
+		for i in range(len(gates)):
+			g = gates[i]
+			if(g[0] == "swap"):
+				if(_n & (2**s_gates.index(i))):
+					if(len(temp) > 0 and temp[-1][1] == a): temp.pop(-1)
+					else: temp.append(["cx", a, b])
+
+					if(len(temp) > 0 and temp[-1][1] == b): temp.pop(-1)
+					else: temp.append(["cx", b, a])
+					
+					if(len(temp) > 0 and temp[-1][1] == a): temp.pop(-1)
+					else: temp.append(["cx", a, b])
+
+				else:
+					if(len(temp) > 0 and temp[-1][1] == b): temp.pop(-1)
+					else: temp.append(["cx", b, a])
+					
+					if(len(temp) > 0 and temp[-1][1] == a): temp.pop(-1)
+					else: temp.append(["cx", a, b])
+
+					if(len(temp) > 0 and temp[-1][1] == b): temp.pop(-1)
+					else: temp.append(["cx", b, a])
+			else:
+				if(len(temp) > 0 and temp[-1][1] == g[1]): temp.pop(-1)
+				else: temp.append(["cx", g[1], g[2]])
+		
+		if(len(temp) < cost):
+			cost = len(temp)
+			ans = temp
+
+	return ans
+
+
 def Save():
 	if(drawn_gates == []): return
 
+	saved_gates = [[n for n in range(N)]]
+	cx_stack = [[[] for j in range(N)] for i in range(N)]
+
+	creg_max = 0
+
+	for gate in drawn_gates[1:]:
+		if(gate[0] == "cx" or gate[0] == "swap"):
+			a,b = gate[1],gate[2]
+			c,d = min(a,b), max(a,b)
+
+			for i in range(N - 1):
+				for j in range(i + 1, N):
+					if((i,j) == (c,d)): continue
+
+					if(i == c or i == d or j == c or j == d):
+						if(len(cx_stack[i][j]) > 0):
+							for g in OptimizeSwapGates(cx_stack[i][j]):
+								saved_gates.append(g)
+							cx_stack[i][j].clear()
+
+			cx_stack[c][d].append(gate)
+		
+		elif(gate[0] == "u3" or gate[0] == "measure"):
+			a = gate[1]
+
+			for i in range(N - 1):
+				for j in range(i + 1, N):
+					if(i == a or j == a):
+						if(len(cx_stack[i][j]) > 0):
+							for g in OptimizeSwapGates(cx_stack[i][j]):
+								saved_gates.append(g)
+							cx_stack[i][j].clear()
+
+			saved_gates.append(gate)
+
+		if(gate[0] == "measure"):
+			if(gate[2] > creg_max): creg_max = gate[2]
+
+	for i in range(N - 1):
+		for j in range(i + 1, N):
+			if(len(cx_stack[i][j]) > 0):
+				for g in OptimizeSwapGates(cx_stack[i][j]):
+					saved_gates.append(g)
+				cx_stack[i][j].clear()
+
+	# print(saved_gates)
+	Draw(saved_gates)
+
+	filename = qasmFileName_input.get().replace(".txt","_output.txt")
+	with open(filename, mode = "w") as f:
+		f.write("OPENQASM 2.0;\n")
+		f.write('include "qelib1.inc";\n')
+		f.write("qreg Q[" + str(N) + "];\n")
+		if(creg_max > 0): f.write("creg C[" + str(creg_max) + "];\n")
+
+		for g in saved_gates:
+			if(g[0] == "u3"): f.write(g[0]+g[2]+" Q["+str(g[1])+"];\n")
+			elif(g[0] == "cx"): f.write(g[0]+" Q["+str(g[1])+"],Q["+str(g[2])+"];\n")
+			elif(g[0] == "measure"): f.write(g[0]+" Q["+str(g[1])+"] -> C["+str(g[2])+"];\n")
 
 
 # Viewer
@@ -680,7 +793,7 @@ qasmFileName_label = tk.Label(text = 'サンプル名')
 qasmFileName_label.place(x = label_head, y = qasmFileName_height)
 
 qasmFileName_comboBox = ttk.Combobox(root, textvariable = qasmFileName_input)
-qasmFileName_comboBox['values'] = ('qasm/ex1.txt','qasm/ex2.txt','qasm/ex3.txt')
+qasmFileName_comboBox['values'] = ('qasm/ex1.txt','qasm/ex2.txt')
 qasmFileName_comboBox.set("qasm/ex1.txt")
 qasmFileName_comboBox.place(x = comboBox_head, y = qasmFileName_height)
 
@@ -720,6 +833,8 @@ loadButton.place(x = button_head, y = row_head_1 - 5, width = 100)
 executeButton = tk.Button(root, text = '実行', command = Execute)
 executeButton.place(x = button_head, y = row_head_3 - 5, width = 100)
 
+executeButton = tk.Button(root, text = '保存', command = Save)
+executeButton.place(x = button_head, y = SAVE_BUTTON_Y - 5, width = 100)
 # Main
 root.mainloop()
 
