@@ -747,7 +747,7 @@ def Save():
 			saved_gates.append(gate)
 
 		if(gate[0] == "measure"):
-			if(gate[2] > creg_max): creg_max = gate[2]
+			if(gate[2] + 1 > creg_max): creg_max = gate[2] + 1
 
 	for i in range(N - 1):
 		for j in range(i + 1, N):
