@@ -1,13 +1,6 @@
-import numpy as np
-import random
-import itertools
-import queue
-
 from amplify import Solver, decode_solution, gen_symbols, BinaryPoly, sum_poly, BinaryQuadraticModel
 from amplify.client import FixstarsClient
 from amplify.constraint import equal_to, penalty
-
-import time
 
 ##########   Amplify Subroutine   ##########
 
@@ -32,7 +25,7 @@ def calcCost(A, B): # count the number of swap gates between 2 layers
 		if(_A[i] == _A[i+1]): return -1
 		if(_B[i] == _B[i+1]): return -1
 
-	C = np.zeros(n)
+	C = [0] * n
 	for i in range(n):
 		for j in range(n):
 			if(A[i] == B[j]):
@@ -48,8 +41,6 @@ def calcCost(A, B): # count the number of swap gates between 2 layers
 	return ans
 
 def quantum_solver(N,M,query): # solve with Amplify
-	t0 = time.time()
-
 	q = gen_symbols(BinaryPoly, M, N, N)	# represent the solution
 
 	##########   constraints   ##########
