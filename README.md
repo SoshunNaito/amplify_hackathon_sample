@@ -9,13 +9,13 @@
 - tkinter
 
 ## 実行方法
-1. ファイル *chapter5.py* の，`client.token`のコメントアウトを外してアクセストークンを入力する
+1. ファイル *application.py* の，`client.token`のコメントアウトを外してアクセストークンを入力する
 <br>
 
-2. *chapter5.py* を実行する
+2. *application.py* を実行する
 
 ```shell
-$ python chapter5.py
+$ python application.py
 ```
 <br>
 
@@ -61,5 +61,5 @@ $ python chapter5.py
 
 - [x] README.mdの手順通りにして，プログラムが実行できる
 - [x] 説明用スライドを用意した 
-- [ ] アクセストークンはリポジトリに含まれていない
+- [x] アクセストークンはリポジトリに含まれていない
 - [x] MIT Licenseにした
