@@ -9,7 +9,7 @@ from amplify.constraint import equal_to, penalty
 ##########   Amplify subroutine   ##########
 
 client = FixstarsClient()
-client.token = "DELETED TOKEN"
+# client.token = "DELETED TOKEN"
 client.parameters.timeout = 1000
 
 constraintWeight = 100
