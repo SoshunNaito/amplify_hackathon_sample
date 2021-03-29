@@ -481,7 +481,7 @@ def getColor(theta_deg): # convert theta into color code
 CANVAS_X_START = 50
 CANVAS_X_OFFSET = 50
 
-DRAW_LAYER_PARTITION = True
+DRAW_LAYER_PARTITION = False
 
 def Draw(_gates): # draw a quantum circuit
 	initial_symbols = _gates[0]	# symbols
