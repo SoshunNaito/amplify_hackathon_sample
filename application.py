@@ -1,8 +1,12 @@
+import itertools
+import queue
+
 from amplify import Solver, decode_solution, gen_symbols, BinaryPoly, sum_poly, BinaryQuadraticModel
 from amplify.client import FixstarsClient
 from amplify.constraint import equal_to, penalty
 
-##########   Amplify Subroutine   ##########
+
+##########   Amplify subroutine   ##########
 
 client = FixstarsClient()
 client.token = "DELETED TOKEN"
@@ -39,19 +43,127 @@ def calcCost(A, B): # count the number of swap gates between 2 layers
 				ans += 1
 	return ans
 
-def quantum_solver_strict(N,M,query): # solve with Amplify
+
+
+def classic_solver(N,M,query): # solve with a classic computer
+	##########   generate all permutations   ##########
+
+	x = []
+	for p in itertools.permutations(range(N), N):
+		s = ""
+		for c in p:
+			s += chr(ord("a")+c)
+		x.append(s)
+	# print(x)
+
+	x_inv = {}
+	for i in range(len(x)):
+		x_inv[x[i]] = i
+	# print(x_inv)
+
+
+	##########   DP solution in O((N!)^2 * M)   ##########
+
+	F = len(x)
+	INF = 10000000
+	valid = [[] for m in range(M)]
+	dp = [[INF for f in range(F)] for m in range(M)]
+	back = [[-1 for f in range(F)] for m in range(M)]
+
+	dist = [[-1 for f1 in range(F)] for f2 in range(F)]
+
+	# 01-BFS
+	for f1 in range(F):
+		dist[f1][f1] = 0
+		que = queue.Queue()
+		que.put(f1)
+
+		while not que.empty():
+			f2 = que.get()
+			s = x[f2]
+			for i in range(N-1):
+				v0, v1 = s[i], s[i+1]
+				s = s.translate(str.maketrans({v0:v1, v1:v0}))
+
+				f = x_inv[s]
+				if(dist[f1][f] == -1):
+					dist[f1][f] = dist[f1][f2] + 1
+					que.put(f)
+
+				s = s.translate(str.maketrans({v0:v1, v1:v0}))
+
+	for m in range(M):
+		if(m == 0):
+			for f in range(F):
+				dp[m][f] = 0
+
+				flag = True
+				for g0 in range(0,len(query[m]),2):
+					v0, v1 = query[m][g0], query[m][g0 + 1]
+					if(abs(x[f].find(chr(ord("a")+v0)) - x[f].find(chr(ord("a")+v1))) != 1):
+						flag = False
+						break
+
+				if(flag == False):
+					dp[m][f] = INF
+					continue
+				else:
+					valid[m].append(f)
+		else:
+			for f in range(F):
+				dp[m][f] = dp[m-1][f]
+				back[m][f] = f
+
+				flag = True
+				for g0 in range(0,len(query[m]),2):
+					v0, v1 = query[m][g0], query[m][g0 + 1]
+					if(abs(x[f].find(chr(ord("a")+v0)) - x[f].find(chr(ord("a")+v1))) != 1):
+						flag = False
+						break
+
+				if(flag == False):
+					dp[m][f] = INF
+					continue
+				else:
+					valid[m].append(f)
+
+				for f0 in valid[m-1]:
+					if(dp[m-1][f0] + dist[f0][f] < dp[m][f]):
+						dp[m][f] = dp[m-1][f0] + dist[f0][f]
+						back[m][f] = f0
+
+	cost, last = INF, -1
+	for f in range(F):
+		if(dp[M-1][f] < cost):
+			cost, last = dp[M-1][f], f
+
+	ans = [last] * M
+	for m in range(M-1)[::-1]:
+		ans[m] = back[m+1][ans[m+1]]
+	ans = [[ord(x[a][i]) - ord("a") for i in range(N)] for a in ans]
+
+	# print("cost(classic) = " + str(cost))
+	# print(ans)
+
+	return cost, ans
+
+
+
+def quantum_solver_strict(N,M,query): # solve by Amplify (strict version)
 	q_all = gen_symbols(BinaryPoly, M*N*N + (M-1)*N*N*N + (M-1)*N*N)
+
 	q = q_all[: M*N*N]							# represent the solution
 	q_sub = q_all[M*N*N : M*N*N + (M-1)*N*N*N]	# q_sub[m][i][j][v] = q[m][i][v] * q[m+1][j][v]
 	q_C_matrix = q_all[M*N*N + (M-1)*N*N*N :]	# q_C_matrix[m][i][j] = sum(q_sub[m][i][j][v] for v)
+
 
 	##########   constraints   ##########
 
 	# each layer doesn't have 2+ same values
 	one_hot_constraints_layer = [
 		# m -> layer
-		# n -> qubit
-		# v -> value of qubit
+		# n -> physical qubit
+		# v -> logical qubit
 		equal_to(sum(q[(m*N+n)*N+v] for n in range(N)), 1)
 		for m in range(M)
 		for v in range(N)
@@ -60,14 +172,14 @@ def quantum_solver_strict(N,M,query): # solve with Amplify
 	# each qubit doesn't have 2+ values
 	one_hot_constraints_num = [
 		# m -> layer
-		# n -> qubit
-		# v -> value of qubit
+		# n -> physical qubit
+		# v -> logical qubit
 		equal_to(sum(q[(m*N+n)*N+v] for v in range(N)), 1)
 		for m in range(M)
 		for n in range(N)
 	]
 
-	# Every CX-gate must be applied for 2 adjacent qubits
+	# every CX gate must be applied for 2 adjacent qubits
 	CXgate_constraints = []
 	for m in range(M):
 		for g0 in range(0,len(query[m]),2):
@@ -83,6 +195,7 @@ def quantum_solver_strict(N,M,query): # solve with Amplify
 						penalty(q[(m*N+i)*N+v1] * q[(m*N+j)*N+v0])
 					)
 
+	# q_sub[m][i][j][v] = q[m][i][v] * q[m+1][j][v]
 	sub_gate_constraints = []
 	for _idx in range((M-1) * N**3):
 		idx = _idx
@@ -101,6 +214,7 @@ def quantum_solver_strict(N,M,query): # solve with Amplify
 			)
 		)
 
+	# q_C_matrix[m][i][j] = sum(q_sub[m][i][j][v] for v)
 	C_matrix_sum_constraints = []
 	for _idx in range((M-1) * N**2):
 		idx = _idx
@@ -138,6 +252,7 @@ def quantum_solver_strict(N,M,query): # solve with Amplify
 	# print(constraints)
 	# print(cost)
 
+
 	##########   solve   ##########
 
 	solver = Solver(client)
@@ -151,6 +266,7 @@ def quantum_solver_strict(N,M,query): # solve with Amplify
 	q_values = decode_solution(q_all, values, 1)
 
 	# print(q_values_main)
+
 
 	##########   decode the result into string   ##########
 
@@ -167,8 +283,11 @@ def quantum_solver_strict(N,M,query): # solve with Amplify
 
 	return cost, ans
 
-def quantum_solver_approx(N,M,query): # solve with Amplify
+
+
+def quantum_solver_approx(N,M,query): # solve with Amplify (approximate version)
 	q = gen_symbols(BinaryPoly, M, N, N)	# represent the solution
+
 
 	##########   constraints   ##########
 
@@ -192,7 +311,7 @@ def quantum_solver_approx(N,M,query): # solve with Amplify
 		for n in range(N)
 	]
 
-	# Every CX-gate must be applied for 2 adjacent qubits
+	# every CX gate must be applied for 2 adjacent qubits
 	CXgate_constraints = []
 	for m in range(M):
 		for g0 in range(0,len(query[m]),2):
@@ -228,6 +347,7 @@ def quantum_solver_approx(N,M,query): # solve with Amplify
 		)
 	)
 
+
 	##########   solve   ##########
 
 	solver = Solver(client)
@@ -241,6 +361,7 @@ def quantum_solver_approx(N,M,query): # solve with Amplify
 	q_values = decode_solution(q, values, 1)
 
 	# print(q_values_main)
+
 
 	##########   decode the result into string   ##########
 
@@ -259,13 +380,13 @@ def quantum_solver_approx(N,M,query): # solve with Amplify
 
 
 
-##########   Main Application   ##########
+##########   main application   ##########
 
 import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 
-# Window Layout
+# window layout
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 
@@ -284,13 +405,14 @@ row_head_1 = WINDOW_HEIGHT * 0.05
 row_head_2 = WINDOW_HEIGHT * 0.10
 row_head_3 = WINDOW_HEIGHT * 0.15
 
-# Variables
+# variables for setting
 canvas = None
 qasmFileName_input = None
 timeout_input = None
 constraintWeight_input = None
 circuit_cost_text = None
 
+# variables of quantum circuit
 N = 10
 M = 10
 query = []
@@ -309,15 +431,18 @@ gates_swap = []
 
 drawn_gates = []
 
-# Functions
-def convertToColorCode(r, g, b):
+
+
+def convertToColorCode(r, g, b): # convert RGB into color code
 	r = max(min(r, 255), 0)
 	g = max(min(g, 255), 0)
 	b = max(min(b, 255), 0)
 
 	return "#" + format(int(r), '02x') +  format(int(g), '02x') + format(int(b), '02x')
 
-def getColor(theta_deg):
+
+
+def getColor(theta_deg): # convert theta into color code
 	while(theta_deg < 0): theta_deg += 360
 	while(theta_deg > 360): theta_deg -= 360
 
@@ -350,33 +475,35 @@ def getColor(theta_deg):
 
 	return convertToColorCode(r,g,b)
 
-# Canvas Layout
+
+
+# canvas layout
 CANVAS_X_START = 50
 CANVAS_X_OFFSET = 50
 
 DRAW_LAYER_PARTITION = False
 
-def Draw(_gates):
-	initial_symbols = _gates[0]
-	_gates = _gates[1:]
+def Draw(_gates): # draw a quantum circuit
+	initial_symbols = _gates[0]	# symbols
+	_gates = _gates[1:]			# gates
 
 
-	##########   gates -> draw_layers   ##########
+	##########   gates -> gate_layers -> gate_columns   ##########
 
-	gate_block = [[]]
+	gate_layers = [[]] # gates to draw (partitions are not included)
 	for gate in _gates:
 		if(gate[0] == "partition"):
-			gate_block.append([])
+			gate_layers.append([])
 		else:
-			gate_block[-1].append(gate)
+			gate_layers[-1].append(gate)
 
-	# print(gate_block)
+	# print(gate_layers)
 
-	draw_layers = []
-	symbols = [s for s in initial_symbols]
+	gate_columns = [] # gates drawn in each column
+	symbols = [s for s in initial_symbols] # current symbols (changed by SWAP gates)
 
-	for m in range(len(gate_block)):
-		gates = gate_block[m]
+	for m in range(len(gate_layers)):
+		gates = gate_layers[m]
 		Ng = len(gates)
 		used = [False] * Ng
 
@@ -385,7 +512,7 @@ def Draw(_gates):
 			# 1 -> reserved
 			# 2 -> used
 			stat = [0] * N
-			layer = []
+			column = []
 
 			for i in range(Ng):
 				if(used[i] == True): continue
@@ -404,7 +531,7 @@ def Draw(_gates):
 
 					if(flag):
 						used[i] = True
-						layer.append(g)
+						column.append(g)
 						for j in range(min(j0,j1), max(j0,j1)+1):
 							stat[j] = 2
 					else:
@@ -416,7 +543,7 @@ def Draw(_gates):
 					
 					if(stat[j] == 0):
 						used[i] = True
-						layer.append(g)
+						column.append(g)
 						stat[j] = 2
 
 				elif(g[0] == "measure"):
@@ -424,29 +551,30 @@ def Draw(_gates):
 					
 					if(stat[j] == 0):
 						used[i] = True
-						layer.append(g)
+						column.append(g)
 						stat[j] = 2
 
-			if(layer == []): break
+			if(column == []): break
 
-			for g in layer:
+			for g in column:
 				if(g[0] == "swap"):
 					i, j = symbols.index(g[1]), symbols.index(g[2])
 					symbols[i],symbols[j] = symbols[j],symbols[i]
 
-			draw_layers.append(layer)
+			gate_columns.append(column)
 
 		if(DRAW_LAYER_PARTITION == True):
-			draw_layers.append([["partition"]])
+			gate_columns.append([["partition"]])
 
 	if(DRAW_LAYER_PARTITION == True):
-		draw_layers = draw_layers[:-1]
+		gate_columns = gate_columns[:-1]
 	
-	# print(draw_layers)
+	# print(gate_columns)
 
 
 	##########   draw   ##########
 
+	# constants
 	GATE_SIZE = 10
 	GATE_WIDTH = 50
 
@@ -456,12 +584,13 @@ def Draw(_gates):
 	U3_COLOR = getColor(310)
 	MEASURE_COLOR = "gray"
 
-	Nl = len(draw_layers)
+	Nc = len(gate_columns)
 	prev_symbols = initial_symbols
 
 	canvas.delete("all")
-	canvas.config(scrollregion = (0, 0, CANVAS_X_START + CANVAS_X_OFFSET * 2 + GATE_WIDTH * (Nl-1), WINDOW_HEIGHT))
+	canvas.config(scrollregion = (0, 0, CANVAS_X_START + CANVAS_X_OFFSET * 2 + GATE_WIDTH * (Nc-1), WINDOW_HEIGHT))
 
+	# draw qubit symbols
 	for n in range(N):
 		canvas.create_text(
 			CANVAS_X_START - 10, Y[n], text = "q"+str(initial_symbols[n]),
@@ -472,18 +601,18 @@ def Draw(_gates):
 			fill = colors[initial_symbols[n]], width = 3
 		)
 
-	global drawn_gates
+	global drawn_gates # drawn gates (can be converted to QASM format)
 	drawn_gates = [initial_symbols]
 
-	for n in range(Nl):
+	for n in range(Nc):
 		xd = GATE_WIDTH
 		x = CANVAS_X_START + CANVAS_X_OFFSET + n * xd
 		xl, xr = x - xd/2, x + xd/2
 
-		if(n == Nl-1): xr = x + CANVAS_X_OFFSET
+		if(n == Nc-1): xr = x + CANVAS_X_OFFSET
 
 		current_symbols = [s for s in prev_symbols]
-		for g in draw_layers[n]:
+		for g in gate_columns[n]:
 			if(g[0] == "swap"):
 				i,j = current_symbols.index(g[1]),current_symbols.index(g[2])
 				current_symbols[i],current_symbols[j] = current_symbols[j],current_symbols[i]
@@ -500,7 +629,7 @@ def Draw(_gates):
 				fill = colors[current_symbols[i]], width = 3
 			)
 		
-		for g in draw_layers[n]:
+		for g in gate_columns[n]:
 			if(g[0] == "u3"):
 				i = prev_symbols.index(g[1])
 				y = Y[i]
@@ -584,7 +713,9 @@ def Draw(_gates):
 
 	# print(drawn_gates)
 
-def Load():
+
+
+def Load(): # load a QASM file
 	circuit_cost_text.set("Cost : -")
 
 	qasmFileName = qasmFileName_input.get()
@@ -592,7 +723,9 @@ def Load():
 	with open(qasmFileName, mode = "r") as f:
 		S = f.readlines()
 
+
 	##########   detect variables   ##########
+
 	global Q_variables, Q_dict, Q_dict_inv, C_variables, C_dict, C_dict_inv
 	Q_variables = []
 	Q_dict = {}
@@ -632,7 +765,9 @@ def Load():
 	# print(Q_dict)
 	# print(Q_dict_inv)
 
+
 	##########   detect gates   ##########
+
 	global gates_input
 	gates_input = []
 
@@ -713,7 +848,9 @@ def Load():
 	# print(gates_layer)
 	Draw(gates_layer)
 
-def bubble_sort(symbols_0, symbols_1):
+
+
+def bubble_sort(symbols_0, symbols_1): # calculate SWAP cost between 2 layers
 	s0 = [s for s in symbols_0]
 	s1 = [s for s in symbols_1]
 	ans = []
@@ -728,7 +865,9 @@ def bubble_sort(symbols_0, symbols_1):
 
 	return ans
 
-def Execute():
+
+
+def Execute(): # call Amplify solution
 	if(gates_layer == []):
 		return
 
@@ -736,7 +875,7 @@ def Execute():
 	client.parameters.timeout = int(timeout_input.get().replace("ms",""))
 	constraintWeight = int(constraintWeight_input.get())
 
-	global M,query
+	global M, query
 	query = [[]]
 
 	for layer in gates_layer[1:]:
@@ -752,7 +891,9 @@ def Execute():
 	# print(M)
 	# print(query)
 
-	cost, ans = quantum_solver_approx(N,M,query)
+	# cost, ans = classic_solver(N,M,query)			# solve with a classic computer
+	# cost, ans = quantum_solver_strict(N,M,query)	# solve with Amplify (approximate version)
+	cost, ans = quantum_solver_approx(N,M,query)	# solve by Amplify (strict version)
 
 	# print("cost = " + str(cost))
 	# print(ans)
@@ -778,7 +919,9 @@ def Execute():
 	# print(gates_swap)
 	Draw(gates_swap)
 
-def OptimizeSwapGates(gates):
+
+
+def OptimizeSwapGates(gates): # Reducing the number of CX gates 
 	if(len(gates) == 0):
 		return []
 
@@ -826,7 +969,8 @@ def OptimizeSwapGates(gates):
 	return ans
 
 
-def Save():
+
+def Save(): # Save current gates into QASM file
 	if(drawn_gates == []): return
 
 	saved_gates = [[n for n in range(N)]]
@@ -890,6 +1034,7 @@ def Save():
 			elif(g[0] == "measure"): f.write(g[0]+" Q["+str(g[1])+"] -> C["+str(g[2])+"];\n")
 
 
+
 # Viewer
 root = tk.Tk()
 root.title("QC Viewer for LNNA")
@@ -933,7 +1078,7 @@ constraintWeight_label = tk.Label(text = '制約の重みパラメータ')
 constraintWeight_label.place(x = label_head, y = constraintWeight_height)
 
 constraintWeight_comboBox = ttk.Combobox(root, textvariable = constraintWeight_input)
-constraintWeight_comboBox['values'] = ('1','10','100','1000','10000')
+constraintWeight_comboBox['values'] = ('1','3','10','30','100','300','1000')
 constraintWeight_comboBox.set(str(constraintWeight))
 constraintWeight_comboBox.place(x = comboBox_head, y = constraintWeight_height)
 
@@ -953,8 +1098,6 @@ executeButton.place(x = button_head, y = row_head_3 - 5, width = 100)
 
 executeButton = tk.Button(root, text = '保存', command = Save)
 executeButton.place(x = button_head, y = SAVE_BUTTON_Y - 5, width = 100)
+
 # Main
 root.mainloop()
-
-
-
