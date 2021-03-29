@@ -5,8 +5,7 @@ from amplify.constraint import equal_to, penalty
 ##########   Amplify Subroutine   ##########
 
 client = FixstarsClient()
-# client.token = "DELETED TOKEN"
-client.token = "Xiccn8dKHhDoboWnaixrUEDRjvMl2vzo"
+client.token = "DELETED TOKEN"
 client.parameters.timeout = 1000
 
 constraintWeight = 100
@@ -40,7 +39,135 @@ def calcCost(A, B): # count the number of swap gates between 2 layers
 				ans += 1
 	return ans
 
-def quantum_solver(N,M,query): # solve with Amplify
+def quantum_solver_strict(N,M,query): # solve with Amplify
+	q_all = gen_symbols(BinaryPoly, M*N*N + (M-1)*N*N*N + (M-1)*N*N)
+	q = q_all[: M*N*N]							# represent the solution
+	q_sub = q_all[M*N*N : M*N*N + (M-1)*N*N*N]	# q_sub[m][i][j][v] = q[m][i][v] * q[m+1][j][v]
+	q_C_matrix = q_all[M*N*N + (M-1)*N*N*N :]	# q_C_matrix[m][i][j] = sum(q_sub[m][i][j][v] for v)
+
+	##########   constraints   ##########
+
+	# each layer doesn't have 2+ same values
+	one_hot_constraints_layer = [
+		# m -> layer
+		# n -> qubit
+		# v -> value of qubit
+		equal_to(sum(q[(m*N+n)*N+v] for n in range(N)), 1)
+		for m in range(M)
+		for v in range(N)
+	]
+
+	# each qubit doesn't have 2+ values
+	one_hot_constraints_num = [
+		# m -> layer
+		# n -> qubit
+		# v -> value of qubit
+		equal_to(sum(q[(m*N+n)*N+v] for v in range(N)), 1)
+		for m in range(M)
+		for n in range(N)
+	]
+
+	# Every CX-gate must be applied for 2 adjacent qubits
+	CXgate_constraints = []
+	for m in range(M):
+		for g0 in range(0,len(query[m]),2):
+			v0, v1 = query[m][g0], query[m][g0 + 1]
+
+			# v0 and v1 must be adjacent each other
+			for i in range(N):
+				for j in range(i+2, N):
+					CXgate_constraints.append(
+						penalty(q[(m*N+i)*N+v0] * q[(m*N+j)*N+v1])
+					)
+					CXgate_constraints.append(
+						penalty(q[(m*N+i)*N+v1] * q[(m*N+j)*N+v0])
+					)
+
+	sub_gate_constraints = []
+	for _idx in range((M-1) * N**3):
+		idx = _idx
+		m = idx // (N**3)
+		idx %= N**3
+		i = idx // (N**2)
+		idx %= N**2
+		j = idx // N
+		idx %= N
+		v = idx
+
+		sub_gate_constraints.append(
+			penalty(
+				3 * q_sub[((m*N+i)*N+j)*N+v] + q[(m*N+i)*N+v] * q[((m+1)*N+j)*N+v]
+				- 2 * q_sub[((m*N+i)*N+j)*N+v] * (q[(m*N+i)*N+v] + q[((m+1)*N+j)*N+v])
+			)
+		)
+
+	C_matrix_sum_constraints = []
+	for _idx in range((M-1) * N**2):
+		idx = _idx
+		m = idx // (N**2)
+		idx %= N**2
+		i = idx // N
+		idx %= N
+		j = idx
+
+		C_matrix_sum_constraints.append(
+			equal_to(q_C_matrix[(m*N+i)*N+j] - sum(q_sub[((m*N+i)*N+j)*N+v] for v in range(N)), 0)
+		)
+
+	constraints = (
+		sum(one_hot_constraints_layer) +
+		sum(one_hot_constraints_num) +
+		sum(CXgate_constraints) +
+		sum(sub_gate_constraints) +
+		sum(C_matrix_sum_constraints)
+	)
+
+	cost = []
+	for m in range(M-1):
+		for i1 in range(N):
+			for j1 in range(i1): # i1 > j1
+				for i2 in range(N):
+					for j2 in range(i2+1, N): # i2 < j2
+						cost.append(q_C_matrix[(m*N+i1)*N+j1] * q_C_matrix[(m*N+i2)*N+j2])
+
+			for j1 in range(i1+1, N): # i1 < j1
+				for i2 in range(N):
+					for j2 in range(i2): # i2 > j2
+						cost.append(q_C_matrix[(m*N+i1)*N+j1] * q_C_matrix[(m*N+i2)*N+j2])
+
+	# print(constraints)
+	# print(cost)
+
+	##########   solve   ##########
+
+	solver = Solver(client)
+	model = BinaryQuadraticModel(constraints * constraintWeight + sum(cost))
+
+	result = solver.solve(model)
+	if len(result) == 0:
+		raise RuntimeError("Any one of constraints is not satisfied.")
+
+	values = result[0].values
+	q_values = decode_solution(q_all, values, 1)
+
+	# print(q_values_main)
+
+	##########   decode the result into string   ##########
+
+	ans = [[-1 for n in range(N)] for m in range(M)]
+	for m in range(M):
+		for n in range(N):
+			for v in range(N):
+				if(q_values[(m*N+n)*N+v] > 0.5):
+					ans[m][n] = v
+
+	cost = 0
+	for m in range(M-1):
+		cost += calcCost(ans[m], ans[m+1])
+
+	return cost, ans
+
+def quantum_solver_approx(N,M,query): # solve with Amplify
 	q = gen_symbols(BinaryPoly, M, N, N)	# represent the solution
 
 	##########   constraints   ##########
@@ -625,7 +752,7 @@ def Execute():
 	# print(M)
 	# print(query)
 
-	cost, ans = quantum_solver(N,M,query)
+	cost, ans = quantum_solver_approx(N,M,query)
 
 	# print("cost = " + str(cost))
 	# print(ans)
