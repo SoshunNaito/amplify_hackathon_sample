@@ -3,12 +3,14 @@
 ## 動作環境
 - mac環境で動作確認を行っています
 - windows環境やlinux環境での動作は保証しません
+<br>
 
 ## 使っているライブラリ
 - itertools
 - queue
 - amplify
 - tkinter
+<br>
 
 ## 実行方法
 1. ファイル *application.py* の，`client.token`のコメントアウトを外してアクセストークンを入力する
@@ -39,12 +41,18 @@ $ python application.py
 6. 満足のいく計算結果が得られたら，「保存」ボタンを押す
 
 > *qasm/ex〇〇_output.txt* から確認できます
+<br>
 
 ### ソルバーの切り替え
 894~896行目のコメントアウトを切り替えることで，古典的解法や厳密解法も実行することができます．
 
+<br>
+
 ### レイヤーの表示
+
 484行目の"False"を"True"に書き換えると，レイヤー間の仕切りも描画されます．
+
+<br>
 
 ## 実行結果
 
@@ -62,7 +70,7 @@ $ python application.py
 
 ![image](https://user-images.githubusercontent.com/50867811/112040949-2572e800-8b89-11eb-97b8-6096ea563abe.png)
 
-
+<br>
 
 ## 提出前チェック
 
