@@ -481,7 +481,7 @@ def getColor(theta_deg): # convert theta into color code
 CANVAS_X_START = 50
 CANVAS_X_OFFSET = 50
 
-DRAW_LAYER_PARTITION = False
+DRAW_LAYER_PARTITION = True
 
 def Draw(_gates): # draw a quantum circuit
 	initial_symbols = _gates[0]	# symbols
@@ -909,12 +909,16 @@ def Execute(): # call Amplify solution
 		if(layer[0] != "partition"):
 			gates_swap.append(layer)
 		else:
+			if(DRAW_LAYER_PARTITION == True):
+				gates_swap.append(["partition"])
+
 			m += 1
 			temp = bubble_sort(ans[m-1], ans[m])
 			for t in temp:
 				gates_swap.append(t)
 
-			# gates_swap.append(["partition"])
+			if(len(temp) > 0 and DRAW_LAYER_PARTITION == True):
+				gates_swap.append(["partition"])
 
 	# print(gates_swap)
 	Draw(gates_swap)
